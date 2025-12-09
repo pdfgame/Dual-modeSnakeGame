@@ -517,7 +517,7 @@ class ClassicSnakeGame:
                 elif prop == 'freeze':
                     self.effects['freeze'] = 30.0
                     self.effect_display = {'text': '冻结效果', 'time': float('inf'), 'color': (0, 0, 255)}
-                    screen_top_center = (self.width // 2, 50)
+                    screen_top_center = (self.width // 2, 50)  # 期末汇报（12月底）之前请勿乱用该项目
                     emit_particle_burst(30, screen_top_center, [((255, 255, 255), (200, 200, 200))])
                 
                 to_remove.append(i)

@@ -517,7 +517,7 @@ class SnakeGame:
                         cy + snake_radius > screen_height):
                         print("碰到屏幕边缘，游戏结束")
                         self.game_over_reason = "碰到屏幕边缘"
-                        self.gameOver = True
+                        self.gameOver = True  # 期末汇报（12月底）之前请勿乱用该项目
                         # 播放游戏结束音效
                         if self.fail_sound:
                             try:

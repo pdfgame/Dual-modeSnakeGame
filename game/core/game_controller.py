@@ -517,7 +517,7 @@ class GameController:
         self.hand_tracking_back_button_rect = pygame.Rect(0, 0, 300, 70)  # 初始化一个默认矩形
         
         # 隐藏所有按钮直到需要它们
-        self.hide_all_buttons()
+        self.hide_all_buttons()    # 期末汇报（12月底）之前请勿乱用该项目
 
     def hide_all_buttons(self):
         # 隐藏所有按钮，无论它们是否存在
@@ -1311,7 +1311,7 @@ class GameController:
                 self.screen.blit(overlay, (0, 0))
             
 
-            button_y_start = menu_start_y + title_height + title_button_spacing
+            button_y_start = menu_start_y + title_height + title_button_spacing # 期末汇报（12月底）之前请勿乱用该项目
             
 
             color_button_rect = pygame.Rect(
