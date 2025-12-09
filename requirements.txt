@@ -1,0 +1,10 @@
+# 游戏依赖项 / Game Dependencies
+pygame-ce             # 游戏开发框架 / Game development framework
+opencv-python         # 计算机视觉库 / Computer vision library
+cvzone                # 手势识别库 / Gesture recognition library
+pillow                # 图像处理库 / Image processing library
+numpy                 # 数值计算库 / Numerical computing library
+pygame_gui            # GUI界面库 / GUI interface library
+tensorflow            # TensorFlow框架（用于TFLite模型）/ TensorFlow framework (for TFLite models)
+requests              # HTTP请求库（用于下载模型）/ HTTP request library (for downloading models)
+# moderngl             # 现代OpenGL库（可选，用于3D渲染）/ Modern OpenGL library (optional, for 3D rendering)

@@ -1,0 +1,60 @@
+{
+    "base_defaults": {
+        "font": {
+            "name": "simhei.ttf",
+            "size": 20
+        }
+    },
+    "#classic_mode_button": {
+        "colours": {
+            "normal_bg": "#008000",
+            "hovered_bg": "#00A000",
+            "disabled_bg": "#004000",
+            "selected_bg": "#00A000",
+            "normal_text": "#FFFFFF",
+            "hovered_text": "#FFFF00",
+            "disabled_text": "#808080",
+            "selected_text": "#FFFF00"
+        }
+    },
+    "#hand_tracking_button": {
+        "colours": {
+            "normal_bg": "#3264C8",
+            "hovered_bg": "#4274D8",
+            "disabled_bg": "#193264",
+            "selected_bg": "#4274D8",
+            "normal_text": "#FFFFFF",
+            "hovered_text": "#FFFF00",
+            "disabled_text": "#808080",
+            "selected_text": "#FFFF00"
+        }
+    },
+    "#settings_button": {
+        "colours": {
+            "normal_bg": "#646464",
+            "hovered_bg": "#787878",
+            "disabled_bg": "#323232",
+            "selected_bg": "#787878",
+            "normal_text": "#FFFFFF",
+            "hovered_text": "#FFFF00",
+            "disabled_text": "#808080",
+            "selected_text": "#FFFF00"
+        }
+    },
+    "defaults": {
+        "colours": {
+            "normal_bg": "#404040",
+            "hovered_bg": "#505050",
+            "disabled_bg": "#202020",
+            "selected_bg": "#505050",
+            "normal_text": "#FFFFFF",
+            "hovered_text": "#FFFF00",
+            "disabled_text": "#808080",
+            "selected_text": "#FFFF00"
+        },
+        "font": {
+            "name": "simhei.ttf",
+            "size": 20
+        }
+    }
+}

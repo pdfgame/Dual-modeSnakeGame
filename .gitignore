@@ -1,0 +1,48 @@
+# 虚拟环境
+venv/
+*.venv/
+env/
+.env/
+
+# 编译生成的文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 打包生成的文件
+build/
+dist/
+*.spec
+*.exe
+*.pkg
+*.lnk
+
+# IDE配置文件
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+logs/
+
+# 测试报告
+coverage/
+.coverage
+pytest_cache/
+
+# 游戏数据（包含本地最高分等用户数据，不应提交到版本控制）
+resources/data/game_data.json
+
+# 音频文件（可选：如果不想包含大型音频文件，可以取消注释）
+# music/
+
+# 打包生成的快捷方式
+*.lnk
