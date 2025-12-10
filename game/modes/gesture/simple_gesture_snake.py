@@ -176,7 +176,7 @@ class SnakeGame:
                 game_over_width = game_over_size[0]
                 game_over_height = game_over_size[1]
                 game_over_x = center_x - game_over_width // 2
-                game_over_y = center_y - 120
+                game_over_y = center_y - 200
                 imgMain, _ = put_chinese_text_pil(imgMain, game_over_text, (game_over_x, game_over_y), game_over_font_size, (255, 0, 0))
                 
                 # 分数文本 - 动态计算位置，实现居中
@@ -186,7 +186,7 @@ class SnakeGame:
                 score_width = score_size[0]
                 score_height = score_size[1]
                 score_x = center_x - score_width // 2
-                score_y = center_y - 30
+                score_y = center_y - 100
                 imgMain, _ = put_chinese_text_pil(imgMain, score_text, (score_x, score_y), score_font_size, (50, 130, 246))
                 
                 # 最高分文本 - 动态计算位置，实现居中
@@ -196,7 +196,7 @@ class SnakeGame:
                 high_score_width = high_score_size[0]
                 high_score_height = high_score_size[1]
                 high_score_x = center_x - high_score_width // 2
-                high_score_y = center_y + 60
+                high_score_y = center_y - 30
                 imgMain, _ = put_chinese_text_pil(imgMain, high_score_text, (high_score_x, high_score_y), high_score_font_size, (50, 130, 246))
                 
 
@@ -204,7 +204,7 @@ class SnakeGame:
                 button_height = 80
                 button_padding = 60  # 增加按钮内边距，确保文本有足够空间
                 button_spacing = 30  
-                button_y = center_y + 150  # 向下调整按钮位置，确保不被截断
+                button_y = center_y + 50  # 向下调整按钮位置，确保居中显示
                 button_font_size = 36
                 
                 # 获取文本
