@@ -11,7 +11,12 @@ try:
 except ImportError:
     MODERNGL_AVAILABLE = False
 
-from core.game_ui import emit_particle_burst, draw_and_update_effects
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+from game.core.game_ui import emit_particle_burst, draw_and_update_effects
+from game.utils.language_manager import get_translation
 
 class ClassicSnakeGame:
     def __init__(self, snake_color=(255, 182, 193), width=1280, height=720, gradient_colors_data=None): # 增加gradient_colors_data参数
@@ -35,6 +40,8 @@ class ClassicSnakeGame:
             self.font_large, self.font_small = pygame.font.Font(None, 80), pygame.font.Font(None, 40)
         
         self.high_score, self.score = 0, 0
+        self.max_length_record = 0  # 历史最长记录
+        self.current_game_max_length = 0  # 当前游戏的最长记录
         self.gradient_colors_data = gradient_colors_data if gradient_colors_data is not None else {} 
 
         self.last_countdown_update = 0  
@@ -44,9 +51,14 @@ class ClassicSnakeGame:
         self.reset()
 
     def reset(self):
+        # 更新历史最长记录
+        if self.current_game_max_length > self.max_length_record:
+            self.max_length_record = self.current_game_max_length
+        
         self.snake, self.direction = [(self.grid_width//2, self.grid_height//2)], (1,0)
         if self.score > self.high_score: self.high_score = self.score
         self.score, self.game_over, self.game_started = 0, False, False
+        self.current_game_max_length = 1  # 初始长度为1
 
         self.has_started = False
 
@@ -54,7 +66,7 @@ class ClassicSnakeGame:
 
         self.base_move_interval = 0.2  
         self.move_interval = self.base_move_interval
-        self.min_move_interval = 0.08  
+        self.min_move_interval = 0.04  
         self.acceleration_time = 0  
         self.acceleration_duration = 0.5  
         self.last_move_time = 0
@@ -127,8 +139,8 @@ class ClassicSnakeGame:
         # 假食物属性列表和概率分布
         # 属性包括：炸弹、变色、加速、减速、冻结
         properties = ['bomb', 'color_change', 'speed_up', 'speed_down', 'freeze', 'none']
-        # 概率分布：降低炸弹概率到10%，普通假食物占40%
-        weights = [0.1, 0.15, 0.15, 0.15, 0.15, 0.3]
+        # 概率分布：降低炸弹概率到5%，普通假食物占31%
+        weights = [0.05, 0.16, 0.16, 0.16, 0.16, 0.31]
         
         for i in range(num_fake_foods):
             pos = self._place_fake_food()
@@ -166,7 +178,7 @@ class ClassicSnakeGame:
         """放置假食物"""
         while True:
             pos = (random.randint(0, self.grid_width-1), random.randint(0, self.grid_height-1))
-            if pos not in self.snake and pos not in self.foods:
+            if pos not in self.snake and pos not in self.foods and pos not in self.obstacles:
                 return pos
 
     def _place_food(self):
@@ -187,8 +199,8 @@ class ClassicSnakeGame:
             while True:
                 # 随机生成障碍物位置
                 obstacle_pos = (random.randint(0, self.grid_width-1), random.randint(0, self.grid_height-1))
-                # 确保障碍物不会出现在蛇的初始位置
-                if obstacle_pos != self.snake[0]:
+                # 确保障碍物不会出现在蛇的初始位置，也不会与其他障碍物重叠
+                if obstacle_pos != self.snake[0] and obstacle_pos not in self.obstacles:
                     self.obstacles.append(obstacle_pos)
                     break
 
@@ -287,7 +299,8 @@ class ClassicSnakeGame:
         # 更新效果提示时间
         if self.effect_display:
             # 检查冻结效果是否已经结束
-            if '冻结效果' in self.effect_display['text']:
+            if self.effects['freeze'] > 0:
+                # 冻结效果还在持续，不更新时间
                 if self.effects['freeze'] <= 0:
                     self.effect_display = None
             else:
@@ -350,7 +363,7 @@ class ClassicSnakeGame:
             # 修复碰撞检测，确保蛇不会移出屏幕边界或撞到障碍物
             if not (0 <= nh[0] < self.grid_width and 0 <= nh[1] < self.grid_height):
                 # 碰到屏幕边缘
-                self.game_over_reason = "碰到屏幕边缘"
+                self.game_over_reason = get_translation('classic_edge_death')
                 self.game_over = True
                 # 播放游戏结束音效
                 if self.fail_sound:
@@ -360,7 +373,7 @@ class ClassicSnakeGame:
                         print(f"播放游戏结束音效失败: {e}")
             elif nh in self.snake:
                 # 碰到自己身体
-                self.game_over_reason = "碰到自己身体"
+                self.game_over_reason = get_translation('classic_self_death')
                 self.game_over = True
                 # 播放游戏结束音效
                 if self.fail_sound:
@@ -370,7 +383,7 @@ class ClassicSnakeGame:
                         print(f"播放游戏结束音效失败: {e}")
             elif nh in self.obstacles:
                 # 碰到障碍物
-                self.game_over_reason = "碰到障碍物"
+                self.game_over_reason = get_translation('classic_obstacle_death')
                 self.game_over = True
                 # 播放游戏结束音效
                 if self.fail_sound:
@@ -426,7 +439,7 @@ class ClassicSnakeGame:
                     else:
                         self.score *= 2   # 然后分数翻倍
                     # 显示分数翻倍效果提示
-                    self.effect_display = {'text': '分数翻倍！', 'time': 60, 'color': (255, 215, 0)}
+                    self.effect_display = {'text': get_translation('effect_double_score'), 'time': 60, 'color': (255, 215, 0)}
                     # 在屏幕正上方添加粒子特效
                     screen_top_center = (self.width // 2, 50)
                     emit_particle_burst(30, screen_top_center, [((255, 215, 0), (255, 235, 150))])
@@ -451,8 +464,15 @@ class ClassicSnakeGame:
             
             # 检查是否吃到假食物或炸弹
             else:
-                self._check_fake_foods()
-                self.snake.pop()
+                game_over, fake_food_eaten = self._check_fake_foods()
+                # 只有在没吃到假食物或炸弹的情况下，才缩短蛇身
+                if not fake_food_eaten and not game_over:
+                    self.snake.pop()
+            
+            # 更新当前游戏的最长记录
+            current_length = len(self.snake)
+            if current_length > self.current_game_max_length:
+                self.current_game_max_length = current_length
         
         # 更新假食物年龄
         for i in range(len(self.fake_foods_age)):
@@ -462,6 +482,7 @@ class ClassicSnakeGame:
         """检查假食物和炸弹，处理各种属性效果"""
         snake_head = self.snake[0]
         to_remove = []
+        fake_food_eaten = False  
         
         for i, fake_food in enumerate(self.fake_foods):
             if snake_head == fake_food:
@@ -486,8 +507,12 @@ class ClassicSnakeGame:
                             self.fail_sound.play()
                         except Exception as e:
                             print(f"播放游戏结束音效失败: {e}")
-                    return True  # 吃到炸弹，返回True
-                elif prop == 'color_change':
+                    return True, False  # 吃到炸弹，返回True表示游戏结束，False表示没有吃到可生长的食物
+                
+                # 吃到了非炸弹的假食物，标记为需要生长
+                fake_food_eaten = True
+                
+                if prop == 'color_change':
                     self.effects['color_change'] = True
                     from core.game_ui import gradient_colors_data
                     if random.random() < 0.5:
@@ -499,26 +524,30 @@ class ClassicSnakeGame:
                         ])
                     else:
                         self.snake_color = random.choice(list(gradient_colors_data.keys()))
-                    self.effect_display = {'text': '变色效果', 'time': 60, 'color': (255, 0, 255)}
+                    self.effect_display = {'text': get_translation('effect_color_change'), 'time': 60, 'color': (255, 0, 255)}
                     screen_top_center = (self.width // 2, 50)
                     emit_particle_burst(30, screen_top_center, [((255, 0, 255), (255, 150, 255))])
                 elif prop == 'speed_up':
                     self.effects['speed_up'] = 5.0
-                    self.score += 1
-                    self.effect_display = {'text': '加速效果', 'time': 60, 'color': (0, 255, 0)}
+                    self.effect_display = {'text': get_translation('effect_speed_up'), 'time': 60, 'color': (0, 255, 0)}
                     screen_top_center = (self.width // 2, 50)
                     emit_particle_burst(30, screen_top_center, [((0, 255, 0), (150, 255, 150))])
                 elif prop == 'speed_down':
                     self.effects['speed_down'] = 12.0
-                    self.score = max(0, self.score - 1)  
-                    self.effect_display = {'text': '减速效果！', 'time': 90, 'color': (0, 0, 255)}
+                    self.effect_display = {'text': get_translation('effect_speed_down'), 'time': 90, 'color': (0, 0, 255)}
                     screen_top_center = (self.width // 2, 50)
                     emit_particle_burst(30, screen_top_center, [((0, 0, 255), (150, 150, 255))])
                 elif prop == 'freeze':
                     self.effects['freeze'] = 30.0
-                    self.effect_display = {'text': '冻结效果', 'time': float('inf'), 'color': (0, 0, 255)}
-                    screen_top_center = (self.width // 2, 50)  # 期末汇报（12月底）之前请勿乱用该项目
+                    self.effect_display = {'text': get_translation('effect_freeze'), 'time': float('inf'), 'color': (0, 0, 255)}
+                    screen_top_center = (self.width // 2, 50)
                     emit_particle_burst(30, screen_top_center, [((255, 255, 255), (200, 200, 200))])
+                elif prop == 'none':
+                    # 普通假食物，只加分，无特效
+                    pass
+                
+                # 除了炸弹外，所有假食物都加分
+                self.score += 1
                 
                 to_remove.append(i)
         
@@ -532,13 +561,14 @@ class ClassicSnakeGame:
             self.fake_foods.append(pos)
             
             properties = ['bomb', 'color_change', 'speed_up', 'speed_down', 'freeze', 'none']
-            weights = [0.1, 0.15, 0.15, 0.15, 0.15, 0.3]  
+            weights = [0.05, 0.16, 0.16, 0.16, 0.16, 0.31]  
             prop = random.choices(properties, weights=weights)[0]
             
             bomb_count = sum(1 for p in self.fake_foods_properties if p == 'bomb')
             if prop == 'bomb' and bomb_count >= 12:
                 prop = random.choice(['color_change', 'speed_up', 'speed_down', 'freeze', 'none'])
             
+            # 所有假食物都使用随机颜色
             all_colors = [
                 ((255, 105, 180), (255, 200, 220)),  
                 ((135, 206, 250), (200, 230, 255)),  
@@ -561,13 +591,14 @@ class ClassicSnakeGame:
                 self.fake_foods.append(pos)
                 
                 properties = ['bomb', 'color_change', 'speed_up', 'speed_down', 'freeze', 'none']
-                weights = [0.1, 0.15, 0.15, 0.15, 0.15, 0.3]  
+                weights = [0.05, 0.16, 0.16, 0.16, 0.16, 0.31]  
                 prop = random.choices(properties, weights=weights)[0]
                 
                 bomb_count = sum(1 for p in self.fake_foods_properties if p == 'bomb')
                 if prop == 'bomb' and bomb_count >= 12:
                     prop = random.choice(['color_change', 'speed_up', 'speed_down', 'freeze', 'none'])
                 
+                # 所有假食物都使用随机颜色
                 all_colors = [
                     ((255, 105, 180), (255, 200, 220)),  
                     ((135, 206, 250), (200, 230, 255)),  
@@ -583,7 +614,7 @@ class ClassicSnakeGame:
                 self.fake_foods_age.append(0)
                 self.fake_foods_properties.append(prop)
         
-        return False  # 未吃到炸弹，返回False
+        return False, fake_food_eaten  # 未吃到炸弹，返回False表示游戏未结束，fake_food_eaten表示是否吃到了可生长的食物
 
     def _get_segment_color(self, segment_index, total_segments):
         """
@@ -654,31 +685,24 @@ class ClassicSnakeGame:
 
         if not self.game_over:
 
+            # 绘制真食物
             for i in range(len(self.foods)):
                 food_pos = (self.foods[i][0]*self.grid_size+self.grid_size//2+10, self.foods[i][1]*self.grid_size+self.grid_size//2+10)
                 
                 if self.is_double_score_foods[i]:
-
+                    # 分数翻倍食物保持原有金色外观
                     gold_color = (255, 215, 0)
-
                     pygame.draw.circle(screen, gold_color, food_pos, self.grid_size//2, width=3)
-
-                    if self.food_visible:
-                        pygame.draw.circle(screen, gold_color, food_pos, self.grid_size//3)
-                    else:
-                        pygame.draw.circle(screen, gold_color, food_pos, self.grid_size//3, width=2)
+                    pygame.draw.circle(screen, gold_color, food_pos, self.grid_size//3)
                 else:
-
-                    if self.food_visible:
-                        pygame.draw.circle(screen, self.food_colors[i][0], food_pos, self.grid_size//3)
-                    else:
-                        pygame.draw.circle(screen, self.food_colors[i][0], food_pos, self.grid_size//3, width=2)
+                    # 普通真食物使用随机颜色，不再闪烁
+                    pygame.draw.circle(screen, self.food_colors[i][0], food_pos, self.grid_size//3)
             
-
+            # 绘制假食物，使用随机颜色
             for i, fake_food in enumerate(self.fake_foods):
-
                 fake_color = self.fake_foods_colors[i][0]
-                pygame.draw.circle(screen, fake_color, (fake_food[0]*self.grid_size+self.grid_size//2+10, fake_food[1]*self.grid_size+self.grid_size//2+10), self.grid_size//3)
+                fake_pos = (fake_food[0]*self.grid_size+self.grid_size//2+10, fake_food[1]*self.grid_size+self.grid_size//2+10)
+                pygame.draw.circle(screen, fake_color, fake_pos, self.grid_size//3)
             
             total_segments = len(self.snake)
 
@@ -764,9 +788,10 @@ class ClassicSnakeGame:
                             pygame.draw.circle(screen, self.BLACK, eye_pos, 3)
         
 
-        score_txt = self.font_small.render(f"分数: {self.score}", True, self.BLACK)
-        hs_txt = self.font_small.render(f"最高分: {self.high_score}", True, self.BLACK)
-        screen.blit(score_txt, (15,15)); screen.blit(hs_txt, (15,55))
+        score_txt = self.font_small.render(get_translation('game_score').format(self.score), True, self.BLACK)
+        hs_txt = self.font_small.render(get_translation('game_high_score').format(self.high_score), True, self.BLACK)
+        max_length_txt = self.font_small.render(f"最长记录: {self.max_length_record}", True, self.BLACK)
+        screen.blit(score_txt, (15,15)); screen.blit(hs_txt, (15,55)); screen.blit(max_length_txt, (15,95))
         
 
         if self.effect_display:
@@ -776,7 +801,7 @@ class ClassicSnakeGame:
             txt_rect = effect_txt.get_rect(center=(self.width//2, 80))
             
 
-            if '冻结效果' in self.effect_display['text']:
+            if get_translation('effect_freeze') in self.effect_display['text']:
 
                 bg_rect = pygame.Rect(txt_rect.x - 30, txt_rect.y - 20, txt_rect.width + 60, txt_rect.height + 40)
                 pygame.draw.rect(screen, (0, 0, 0, 180), bg_rect, border_radius=15)
@@ -801,21 +826,36 @@ class ClassicSnakeGame:
             
 
             if self.game_over_reason == 'bomb':
-                over_txt=self.font_large.render("你被炸弹炸死了！",True,self.BLACK)
+                over_txt=self.font_large.render(get_translation('classic_bomb_death'),True,self.BLACK)
             elif self.game_over_reason:
                 over_txt=self.font_large.render(self.game_over_reason,True,self.BLACK)
             else:
-                over_txt=self.font_large.render("游戏结束",True,self.BLACK)
+                over_txt=self.font_large.render(get_translation('game_game_over'),True,self.BLACK)
                 
 
             screen.blit(over_txt, over_txt.get_rect(center=(self.width/2,self.height/2-120)))
             
 
-            score_txt=self.font_small.render(f"最终分数: {self.score}",True,self.BLACK)
+            score_txt=self.font_small.render(get_translation('game_final_score').format(self.score),True,self.BLACK)
             screen.blit(score_txt, score_txt.get_rect(center=(self.width/2,self.height/2-60)))
             
+            # 显示此次游戏的身长
+            length_txt=self.font_small.render(f"身长: {self.current_game_max_length}",True,self.BLACK)
+            screen.blit(length_txt, length_txt.get_rect(center=(self.width/2,self.height/2-20)))
+            
 
-            button_width = 180
+            # 动态计算按钮宽度，确保能容纳最长文本
+            menu_text = get_translation('game_return_menu')
+            restart_text = get_translation('game_restart')
+            exit_text = get_translation('menu_exit')
+            
+            # 计算文本宽度
+            menu_text_width = self.font_small.size(menu_text)[0]
+            restart_text_width = self.font_small.size(restart_text)[0]
+            exit_text_width = self.font_small.size(exit_text)[0]
+            
+            # 设置按钮宽度为最长文本宽度加上40像素内边距
+            button_width = max(menu_text_width, restart_text_width, exit_text_width) + 40
             button_height = 50
             button_spacing = 30
             button_y = self.height/2 + 20
@@ -839,21 +879,21 @@ class ClassicSnakeGame:
             
 
             pygame.draw.rect(screen, button_color, restart_rect, border_radius=5)
-            restart_txt = self.font_small.render("重新开始", True, text_color)
+            restart_txt = self.font_small.render(get_translation('game_restart'), True, text_color)
             screen.blit(restart_txt, restart_txt.get_rect(center=restart_rect.center))
             
 
             pygame.draw.rect(screen, button_color, menu_rect, border_radius=5)
-            menu_txt = self.font_small.render("返回菜单", True, text_color)
+            menu_txt = self.font_small.render(get_translation('game_return_menu'), True, text_color)
             screen.blit(menu_txt, menu_txt.get_rect(center=menu_rect.center))
             
 
             pygame.draw.rect(screen, exit_button_color, exit_rect, border_radius=5)
-            exit_txt = self.font_small.render("退出游戏", True, text_color)
+            exit_txt = self.font_small.render(get_translation('menu_exit'), True, text_color)
             screen.blit(exit_txt, exit_txt.get_rect(center=exit_rect.center))
         elif not self.game_started:
 
-            start_txt = self.font_small.render("按任意方向键开始游戏",True,self.BLACK)
+            start_txt = self.font_small.render(get_translation('classic_start_prompt'),True,self.BLACK)
             screen.blit(start_txt, start_txt.get_rect(center=(self.width/2,self.height/3)))
         return screen
 

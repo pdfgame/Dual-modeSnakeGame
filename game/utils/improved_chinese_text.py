@@ -139,20 +139,33 @@ def put_chinese_text_pil(img, text, position, font_size, color):
         
 
         rgb_color = (color[2], color[1], color[0])
-
+        
+        # 测量文本尺寸
+        try:
+            bbox = draw.textbbox((0, 0), text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+        except AttributeError:
+            text_width, text_height = draw.textsize(text, font=font)
+        
         draw.text(position, text, font=font, fill=rgb_color)
         
 
-        return cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
+        img_result = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
+        return img_result, (text_width, text_height)
     except Exception as e:
         print(f"绘制文本错误: {e}")
 
         try:
 
             cv2.putText(img, text, position, cv2.FONT_HERSHEY_SIMPLEX, font_size / 20, color, 2)
+            # 估算文本尺寸
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            text_size = cv2.getTextSize(text, font, font_size / 20, 2)[0]
+            return img, text_size
         except Exception as e2:
             print(f"备用绘制方法也失败: {e2}")
-        return img
+            return img, (0, 0)
 
 def put_chinese_text_with_background(img, text, position, font_size, text_color, bg_color, bg_opacity=0.6):
     """

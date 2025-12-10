@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 
 from game.utils.improved_chinese_text import put_chinese_text_with_background, put_chinese_text_pil
+from game.utils.language_manager import get_translation
 
 class SnakeGame:
     def __init__(self, food_path, width=1280, height=720, snake_color=(200,0,200), gradient_colors_data=None):
@@ -128,7 +129,7 @@ class SnakeGame:
             # 绘制游戏结束画面，所有文字居中显示
             
             # 绘制"游戏结束"文字，位置居中
-            game_over_text = "游戏结束"
+            game_over_text = get_translation('game_end')
             game_over_font_size = 80
             # 使用put_chinese_text_with_background函数的自动居中特性，文字不会超出框外
             imgMain = put_chinese_text_with_background(imgMain, game_over_text, 
@@ -136,7 +137,7 @@ class SnakeGame:
                                                      game_over_font_size, (255, 255, 255), (0, 0, 0))
             
             # 绘制得分文字，位置居中
-            score_text = f'你的得分:{self.score}'
+            score_text = get_translation('game_final_score').format(self.score)
             score_font_size = 60
             # 使用put_chinese_text_with_background函数的自动居中特性，文字不会超出框外
             imgMain = put_chinese_text_with_background(imgMain, score_text, 
@@ -316,7 +317,7 @@ class SnakeGame:
                     imgMain = cvzone.overlayPNG(imgMain, obstacle['image'], (obstacle['x'], obstacle['y']))
 
                 # 显示中文得分
-                imgMain = put_chinese_text_with_background(imgMain, f'你的得分:{self.score}', (50, 80), 40, (50, 130, 246), (0, 0, 0))
+                imgMain = put_chinese_text_with_background(imgMain, get_translation('game_score').format(self.score), (50, 80), 40, (50, 130, 246), (0, 0, 0))
 
                 # 获取实际图像尺寸，确保边框适应实际屏幕大小
                 actual_height, actual_width, _ = imgMain.shape
@@ -354,7 +355,7 @@ class SnakeGame:
             self.create_particle_border(imgMain)
             
             # 在左上角显示历史最高分数和本次分数累计进度
-            imgMain = put_chinese_text_with_background(imgMain, f'历史最高: {high_score}', (50, 150), 30, (50, 130, 246), (0, 0, 0))
-            imgMain = put_chinese_text_with_background(imgMain, f'本次进度: {self.score}', (50, 200), 30, (50, 130, 246), (0, 0, 0))
+            imgMain = put_chinese_text_with_background(imgMain, get_translation('game_high_score').format(high_score), (50, 150), 30, (50, 130, 246), (0, 0, 0))
+            imgMain = put_chinese_text_with_background(imgMain, get_translation('game_score').format(self.score), (50, 200), 30, (50, 130, 246), (0, 0, 0))
         
         return imgMain

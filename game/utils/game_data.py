@@ -27,7 +27,8 @@ def load_game_data():
         'high_score_classic': 0,       
         'high_score_gesture': 0,       
         'snake_color': (255, 182, 193),  
-        'hide_camera_feed': True       
+        'hide_camera_feed': True,      
+        'language': 'zh_cn'            
     }
     try:
         if os.path.exists(GAME_DATA_FILE):

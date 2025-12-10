@@ -19,8 +19,13 @@ This project is a dual-mode snake game developed based on inspiration from exist
   - 可自定义蛇的颜色
   - 可切换摄像头显示
   - 支持保存最高分
+- **经典模式特色功能 / Classic Mode Features**：
+  - 多种食物类型：除了炸弹食物外，其他食物吃了都加分
+  - 蛇身长度记录：显示当前游戏身长和历史最长记录
+  - 真假食物系统：假食物中包含炸弹，吃到会直接死亡，真食物会闪烁提示
 - **多语言支持 / Multi-language Support**：
-  - 完整的中文界面
+  - 默认中文界面
+  - 可通过ESC设置菜单切换语言
   - 清晰的中文操作提示
 
 ## 项目结构 / Project Structure
@@ -96,8 +101,8 @@ python main.py
 ### 主菜单 / Main Menu
 - **鼠标点击 / Mouse Click**：选择游戏模式或进入设置
   Select game mode or enter settings
-- **ESC键 / ESC Key**：调出设置菜单
-  Bring up the settings menu
+- **ESC键 / ESC Key**：调出设置菜单（包含语言设置选项）
+  Bring up the settings menu (including language settings)
 
 ### 经典模式 / Classic Mode
 - **方向键 / Arrow Keys**：控制蛇的移动方向

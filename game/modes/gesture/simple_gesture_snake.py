@@ -8,7 +8,8 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 
 
-from game.utils.improved_chinese_text import put_chinese_text_pil, _get_font
+from game.utils.improved_chinese_text import put_chinese_text_pil
+from game.utils.language_manager import get_translation
 
 class SnakeGame:
     def __init__(self, food_path, high_score=0):             # 构造方法
@@ -163,39 +164,81 @@ class SnakeGame:
                 
 
 
+                # 游戏结束文本 - 动态计算位置，实现居中
                 if self.game_over_reason:
                     game_over_text = self.game_over_reason
                 else:
-                    game_over_text = "游戏结束"
+                    game_over_text = get_translation('game_end')
                 game_over_font_size = 80
-
-                imgMain = put_chinese_text_pil(imgMain, game_over_text, (center_x - 180, center_y - 120), game_over_font_size, (255, 0, 0))
                 
-
-                score_text = f'最终分数: {self.score}'
+                # 动态计算游戏结束文本位置
+                game_over_size = put_chinese_text_pil(imgMain, game_over_text, (0, 0), game_over_font_size, (255, 0, 0))[1]
+                game_over_width = game_over_size[0]
+                game_over_height = game_over_size[1]
+                game_over_x = center_x - game_over_width // 2
+                game_over_y = center_y - 120
+                imgMain, _ = put_chinese_text_pil(imgMain, game_over_text, (game_over_x, game_over_y), game_over_font_size, (255, 0, 0))
+                
+                # 分数文本 - 动态计算位置，实现居中
+                score_text = get_translation('game_final_score').format(self.score)
                 score_font_size = 60
-                imgMain = put_chinese_text_pil(imgMain, score_text, (center_x - 150, center_y - 30), score_font_size, (50, 130, 246))
+                score_size = put_chinese_text_pil(imgMain, score_text, (0, 0), score_font_size, (50, 130, 246))[1]
+                score_width = score_size[0]
+                score_height = score_size[1]
+                score_x = center_x - score_width // 2
+                score_y = center_y - 30
+                imgMain, _ = put_chinese_text_pil(imgMain, score_text, (score_x, score_y), score_font_size, (50, 130, 246))
                 
-
-                high_score_text = f'最高分: {self.high_score}'
+                # 最高分文本 - 动态计算位置，实现居中
+                high_score_text = get_translation('game_high_score').format(self.high_score)
                 high_score_font_size = 40
-                imgMain = put_chinese_text_pil(imgMain, high_score_text, (center_x - 120, center_y + 60), high_score_font_size, (50, 130, 246))
+                high_score_size = put_chinese_text_pil(imgMain, high_score_text, (0, 0), high_score_font_size, (50, 130, 246))[1]
+                high_score_width = high_score_size[0]
+                high_score_height = high_score_size[1]
+                high_score_x = center_x - high_score_width // 2
+                high_score_y = center_y + 60
+                imgMain, _ = put_chinese_text_pil(imgMain, high_score_text, (high_score_x, high_score_y), high_score_font_size, (50, 130, 246))
                 
 
-                button_width = 180  
+                # 计算按钮宽度，确保能容纳中文文本
                 button_height = 80
+                button_padding = 60  # 增加按钮内边距，确保文本有足够空间
                 button_spacing = 30  
-                button_y = center_y + 120  
+                button_y = center_y + 150  # 向下调整按钮位置，确保不被截断
+                button_font_size = 36
                 
-
+                # 获取文本
+                restart_text = get_translation('game_restart')
+                menu_text = get_translation('game_return_menu')
+                
+                # 使用与绘制相同的字体来测量文本宽度
+                from PIL import Image, ImageDraw, ImageFont
+                from game.utils.improved_chinese_text import _get_font
+                temp_img = Image.new('RGB', (1, 1))
+                temp_draw = ImageDraw.Draw(temp_img)
+                
+                # 使用实际绘制时使用的字体
+                font = _get_font(button_font_size)
+                
+                # 测量文本宽度
+                try:
+                    restart_bbox = temp_draw.textbbox((0, 0), restart_text, font=font)
+                    restart_text_width = restart_bbox[2] - restart_bbox[0]
+                    menu_bbox = temp_draw.textbbox((0, 0), menu_text, font=font)
+                    menu_text_width = menu_bbox[2] - menu_bbox[0]
+                except AttributeError:
+                    restart_text_width, _ = temp_draw.textsize(restart_text, font=font)
+                    menu_text_width, _ = temp_draw.textsize(menu_text, font=font)
+                
+                # 计算按钮宽度，取文本宽度加内边距的最大值
+                button_width = max(restart_text_width + button_padding, menu_text_width + button_padding, 220)  # 增加最小宽度
+                
                 total_buttons_width = button_width * 2 + button_spacing
                 start_x = (screen_width - total_buttons_width) // 2
                 
-
                 restart_button_x = start_x
                 restart_button_rect = (restart_button_x, button_y, button_width, button_height)
                 
-
                 menu_button_x = start_x + button_width + button_spacing
                 menu_button_rect = (menu_button_x, button_y, button_width, button_height)
                 
@@ -215,47 +258,41 @@ class SnakeGame:
                 cv2.rectangle(imgMain, (restart_button_rect[0], restart_button_rect[1]), (restart_button_rect[0] + restart_button_rect[2], restart_button_rect[1] + restart_button_rect[3]), (255, 255, 255), 3)
                 
 
-                button_text = "重新开始"
-                button_font_size = 36
-
-                from PIL import Image, ImageDraw, ImageFont
+                # 绘制重启按钮文本
+                button_text = get_translation('game_restart')
+                # 先测量文本尺寸
                 temp_img = Image.new('RGB', (1, 1))
                 temp_draw = ImageDraw.Draw(temp_img)
-                
-
-                font = ImageFont.load_default()
+                font = _get_font(button_font_size)
                 try:
-                    text_bbox = temp_draw.textbbox((0, 0), button_text, font=font)
-                    text_width = text_bbox[2] - text_bbox[0]
-                    text_height = text_bbox[3] - text_bbox[1]
-                except AttributeError: 
-                    text_width, text_height = temp_draw.textsize(button_text, font=font)
-                
-
-                restart_text_x = restart_button_x + 20  
-                restart_text_y = button_y + 15  
-                imgMain = put_chinese_text_pil(imgMain, button_text, (restart_text_x, restart_text_y), button_font_size, (255, 255, 255))
+                    restart_bbox = temp_draw.textbbox((0, 0), button_text, font=font)
+                    restart_text_width = restart_bbox[2] - restart_bbox[0]
+                    restart_text_height = restart_bbox[3] - restart_bbox[1]
+                except AttributeError:
+                    restart_text_width, restart_text_height = temp_draw.textsize(button_text, font=font)
+                # 计算文本位置，确保完全居中
+                restart_text_x = restart_button_x + (button_width - restart_text_width) // 2
+                restart_text_y = button_y + 25  # 使用固定偏移量，根据按钮高度80px，25px的偏移量应该能让文字居中
+                imgMain, _ = put_chinese_text_pil(imgMain, button_text, (restart_text_x, restart_text_y), button_font_size, (255, 255, 255))
                 
 
                 cv2.rectangle(imgMain, (menu_button_rect[0], menu_button_rect[1]), (menu_button_rect[0] + menu_button_rect[2], menu_button_rect[1] + menu_button_rect[3]), (50, 100, 200), cv2.FILLED)
                 cv2.rectangle(imgMain, (menu_button_rect[0], menu_button_rect[1]), (menu_button_rect[0] + menu_button_rect[2], menu_button_rect[1] + menu_button_rect[3]), (255, 255, 255), 3)
                 
 
-                menu_button_text = "返回主菜单"
-                menu_button_font_size = 32
-
-                font = ImageFont.load_default()
+                # 绘制返回菜单按钮文本
+                menu_button_text = get_translation('game_return_menu')
+                # 先测量文本尺寸
                 try:
-                    text_bbox = temp_draw.textbbox((0, 0), menu_button_text, font=font)
-                    text_width = text_bbox[2] - text_bbox[0]
-                    text_height = text_bbox[3] - text_bbox[1]
-                except AttributeError: 
-                    text_width, text_height = temp_draw.textsize(menu_button_text, font=font)
-                
-
-                menu_text_x = menu_button_x + 10  
-                menu_text_y = button_y + 15  
-                imgMain = put_chinese_text_pil(imgMain, menu_button_text, (menu_text_x, menu_text_y), menu_button_font_size, (255, 255, 255))
+                    menu_bbox = temp_draw.textbbox((0, 0), menu_button_text, font=font)
+                    menu_text_width = menu_bbox[2] - menu_bbox[0]
+                    menu_text_height = menu_bbox[3] - menu_bbox[1]
+                except AttributeError:
+                    menu_text_width, menu_text_height = temp_draw.textsize(menu_button_text, font=font)
+                # 计算文本位置，确保完全居中
+                menu_text_x = menu_button_x + (button_width - menu_text_width) // 2
+                menu_text_y = button_y + 25  # 使用固定偏移量，根据按钮高度80px，25px的偏移量应该能让文字居中
+                imgMain, _ = put_chinese_text_pil(imgMain, menu_button_text, (menu_text_x, menu_text_y), button_font_size, (255, 255, 255))
             except Exception as e:
                 print(f"绘制游戏结束画面错误: {e}")
 
@@ -268,35 +305,69 @@ class SnakeGame:
                 if self.game_over_reason:
                     game_over_text = self.game_over_reason
                 else:
-                    game_over_text = "游戏结束"
-                cv2.putText(imgMain, game_over_text, (center_x - 150, center_y - 150), cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 255, 255), 3)
+                    game_over_text = get_translation('game_end')
                 
-
-                score_text = f'你的得分:{self.score}'
-                cv2.putText(imgMain, score_text, (center_x - 120, center_y - 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 2)
+                # 动态计算游戏结束文本位置，确保居中
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                game_over_size = cv2.getTextSize(game_over_text, font, 3, 3)[0]
+                game_over_x = center_x - game_over_size[0] // 2
+                cv2.putText(imgMain, game_over_text, (game_over_x, center_y - 150), font, 3, (255, 255, 255), 3)
                 
-
+                # 使用翻译函数获取分数文本
+                score_text = get_translation('game_final_score').format(self.score)
+                score_size = cv2.getTextSize(score_text, font, 2, 2)[0]
+                score_x = center_x - score_size[0] // 2
+                cv2.putText(imgMain, score_text, (score_x, center_y - 50), font, 2, (0, 255, 255), 2)
                 
-
-                button_width = 250
+                # 使用翻译函数获取最高分文本
+                high_score_text = get_translation('game_high_score').format(self.high_score)
+                high_score_size = cv2.getTextSize(high_score_text, font, 1.5, 2)[0]
+                high_score_x = center_x - high_score_size[0] // 2
+                cv2.putText(imgMain, high_score_text, (high_score_x, center_y + 30), font, 1.5, (0, 255, 255), 2)
+                
+                # 动态计算按钮宽度，确保能容纳英文文本
+                restart_text = get_translation('game_restart')
+                restart_text_size = cv2.getTextSize(restart_text, font, 2, 2)[0]
+                button_width = max(restart_text_size[0] + 40, 250)  # 最小宽度250
                 button_height = 80
-                button_x = 500
-                button_y = 700
                 
-
+                # 居中显示按钮
+                button_x = center_x - button_width // 2
+                button_y = center_y + 120
+                
                 if mouse_clicked and mouse_pos:
                     if button_x <= mouse_pos[0] <= button_x + button_width and button_y <= mouse_pos[1] <= button_y + button_height:
                         print("备用方案：重新开始按钮被点击")
                         self.reset()
-
                         self.gameOver = False
                 
-
                 cv2.rectangle(imgMain, (button_x, button_y), (button_x + button_width, button_y + button_height), (0, 150, 0), cv2.FILLED)
                 cv2.rectangle(imgMain, (button_x, button_y), (button_x + button_width, button_y + button_height), (255, 255, 255), 3)
                 
-
-                cv2.putText(imgMain, "重新开始", (button_x + 60, button_y + 50), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 2)
+                # 动态计算文本位置，实现居中对齐
+                restart_text_x = button_x + (button_width - restart_text_size[0]) // 2
+                restart_text_y = button_y + 50
+                cv2.putText(imgMain, restart_text, (restart_text_x, restart_text_y), font, 2, (255, 255, 255), 2)
+                
+                # 添加返回主菜单按钮
+                menu_text = get_translation('game_return_menu')
+                menu_text_size = cv2.getTextSize(menu_text, font, 2, 2)[0]
+                menu_button_width = max(menu_text_size[0] + 40, 250)
+                menu_button_x = center_x - menu_button_width // 2
+                menu_button_y = button_y + button_height + 20
+                menu_button_rect = (menu_button_x, menu_button_y, menu_button_width, button_height)
+                
+                if mouse_clicked and mouse_pos:
+                    if menu_button_rect[0] <= mouse_pos[0] <= menu_button_rect[0] + menu_button_rect[2] and menu_button_rect[1] <= mouse_pos[1] <= menu_button_rect[1] + menu_button_rect[3]:
+                        self.return_to_menu = True
+                
+                cv2.rectangle(imgMain, menu_button_rect, (menu_button_x + menu_button_width, menu_button_y + button_height), (50, 100, 200), cv2.FILLED)
+                cv2.rectangle(imgMain, menu_button_rect, (menu_button_x + menu_button_width, menu_button_y + button_height), (255, 255, 255), 3)
+                
+                # 动态计算返回主菜单文本位置
+                menu_text_x = menu_button_x + (menu_button_width - menu_text_size[0]) // 2
+                menu_text_y = menu_button_y + 50
+                cv2.putText(imgMain, menu_text, (menu_text_x, menu_text_y), font, 2, (255, 255, 255), 2)
         else:
 
             smooth_cx = 0
@@ -357,9 +428,9 @@ class SnakeGame:
                 smooth_cx, smooth_cy = self.smooth_head
                 
                 from game.utils.improved_chinese_text import put_chinese_text_pil
-                imgMain = put_chinese_text_pil(imgMain, f'得分: {self.score}', (50, 80), 40, (50, 130, 246))
-                imgMain = put_chinese_text_pil(imgMain, f'最高分: {self.high_score}', (50, 130), 30, (50, 130, 246))
-                imgMain = put_chinese_text_pil(imgMain, "未检测到手部", (screen_width//2 - 150, 50), 40, (255, 255, 0))
+                imgMain, _ = put_chinese_text_pil(imgMain, get_translation('game_score').format(self.score), (50, 80), 40, (50, 130, 246))
+                imgMain, _ = put_chinese_text_pil(imgMain, get_translation('game_high_score').format(self.high_score), (50, 130), 30, (50, 130, 246))
+                imgMain, _ = put_chinese_text_pil(imgMain, get_translation('gesture_no_hand'), (screen_width//2 - 150, 50), 40, (255, 255, 0))
             
 
             try:
@@ -482,20 +553,19 @@ class SnakeGame:
             try:
                     from game.utils.improved_chinese_text import put_chinese_text_pil
 
-                    imgMain = put_chinese_text_pil(imgMain, f'得分: {self.score}', (50, 80), 40, (50, 130, 246))
+                    imgMain, _ = put_chinese_text_pil(imgMain, get_translation('game_score').format(self.score), (50, 80), 40, (50, 130, 246))
 
-                    imgMain = put_chinese_text_pil(imgMain, f'最高分: {self.high_score}', (50, 130), 30, (50, 130, 246))
+                    imgMain, _ = put_chinese_text_pil(imgMain, get_translation('game_high_score').format(self.high_score), (50, 130), 30, (50, 130, 246))
             except Exception as e:
                 print(f"绘制中文得分错误: {e}")
 
-
                 cv2.rectangle(imgMain, (30, 60), (200, 100), (0, 0, 0), cv2.FILLED)
 
-                cv2.putText(imgMain, f'得分: {self.score}', (40, 90), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (50, 130, 246), 2)
+                cv2.putText(imgMain, f'Score: {self.score}', (40, 90), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (50, 130, 246), 2)
 
                 cv2.rectangle(imgMain, (30, 110), (220, 140), (0, 0, 0), cv2.FILLED)
 
-                cv2.putText(imgMain, f'最高分: {self.high_score}', (40, 135), cv2.FONT_HERSHEY_SIMPLEX, 1, (50, 130, 246), 2)
+                cv2.putText(imgMain, f'High Score: {self.high_score}', (40, 135), cv2.FONT_HERSHEY_SIMPLEX, 1, (50, 130, 246), 2)
 
 
             screen_height, screen_width, _ = imgMain.shape
@@ -516,7 +586,7 @@ class SnakeGame:
                         cy - snake_radius < 0 or 
                         cy + snake_radius > screen_height):
                         print("碰到屏幕边缘，游戏结束")
-                        self.game_over_reason = "碰到屏幕边缘"
+                        self.game_over_reason = get_translation('classic_edge_death')
                         self.gameOver = True  # 期末汇报（12月底）之前请勿乱用该项目
                         # 播放游戏结束音效
                         if self.fail_sound:
@@ -530,7 +600,7 @@ class SnakeGame:
 
                         if math.hypot(cx - ox, cy - oy) < (snake_radius + self.wObstacle // 2):
                             print("碰到障碍物，游戏结束")
-                            self.game_over_reason = "碰到障碍物"
+                            self.game_over_reason = get_translation('classic_obstacle_death')
                             self.gameOver = True
                             # 播放游戏结束音效
                             if self.fail_sound:

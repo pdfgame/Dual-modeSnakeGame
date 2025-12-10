@@ -6,6 +6,7 @@ from PIL import ImageFont
 import pygame
 import os
 from game.utils.improved_chinese_text import put_chinese_text_pil, put_rainbow_text_pil
+from game.utils.language_manager import get_translation
 
 
 gradient_colors_data = {
@@ -167,24 +168,45 @@ def draw_startup_animation(img, frame):
         if len(pts)>1:
             for i in range(1,len(pts)): cv2.line(img,pts[i-1],pts[i],(int(255*(1-i/400)),255,int(255*i/400)),int(15*(1-i/400)+5))
         if pts: head=pts[-1]; emit_particle_trail(2,head,[((255,255,255),(200,200,200))],vel_range=(-2,2),life_range=(20,40),size_range=(2,5),grav=0.02); cv2.circle(img,head,20,(255,255,255),-1); cv2.circle(img,head,30,(255,255,255),2)
-    draw_and_update_effects(img)
+    img = draw_and_update_effects(img)
+    
+    # 导入PIL模块
+    from PIL import Image, ImageDraw
     
     # 主加载文字
-    text = "正在加载中..."
+    text = get_translation('loading')
     font_size = 40
     # 使用改进的中文文本渲染函数
     try:
-        img = put_chinese_text_pil(img, text, ((w - 150) // 2, cy + h // 3), font_size, tuple(int(255*min(frame/(PULSE_END+30),1.0)) for _ in range(3)))
+        img, _ = put_chinese_text_pil(img, text, ((w - 150) // 2, cy + h // 3), font_size, tuple(int(255*min(frame/(PULSE_END+30),1.0)) for _ in range(3)))
     except Exception as e:
         print(f"加载动画文本渲染错误: {e}")
         # 备用方案
         cv2.putText(img, "Loading...", ((w - 150) // 2, cy + h // 3), cv2.FONT_HERSHEY_SIMPLEX, 1, tuple(int(255*min(frame/(PULSE_END+30),1.0)) for _ in range(3)), 2)
     
     # 在加载页面右下角添加按钮
-    creator_text = "有建议请联系我"
-    button_width = 180
+    creator_text = get_translation('creator_text')
     button_height = 40
     margin = 20
+    creator_font_size = 20
+    
+    # 测量文字大小，动态计算按钮宽度
+    from game.utils.improved_chinese_text import _get_font
+    temp_img = Image.new('RGB', (1, 1))
+    temp_draw = ImageDraw.Draw(temp_img)
+    font = _get_font(creator_font_size)
+    try:
+        bbox = temp_draw.textbbox((0, 0), creator_text, font=font)
+        text_width = bbox[2] - bbox[0]
+        text_height = bbox[3] - bbox[1]
+        left, top, right, bottom = bbox  # 提取bbox的四个值
+    except AttributeError:
+        text_width, text_height = temp_draw.textsize(creator_text, font=font)
+        left, top, right, bottom = 0, 0, text_width, text_height  # 兼容旧版本PIL
+    
+    # 动态计算按钮宽度，确保能容纳所有文字，增加20px的内边距
+    button_width = text_width + 20
+    
     # 按钮位置：右下角
     button_x = w - button_width - margin
     button_y = h - button_height - margin
@@ -196,25 +218,27 @@ def draw_startup_animation(img, frame):
     draw_rounded_rectangle(img, (button_x, button_y), (button_x + button_width, button_y + button_height), button_color, 8)
     
     # 在按钮上绘制文字
-    creator_font_size = 20
     try:
-        # 保持使用put_chinese_text_pil函数，但改进居中计算
-        # 首先获取文字大小
-        text_width, text_height = get_text_size(creator_text, creator_font_size)
-        
+        # 使用简单直接的方法确保文字垂直居中
         # 计算水平居中位置
         text_x = button_x + (button_width - text_width) // 2
         
-        # 计算垂直居中位置，使用经验值确保中文正确显示且居中
-        text_y = button_y + (button_height + text_height) // 2 - 18
+        # 使用固定偏移量，根据按钮高度40px和字体大小20px，27px的偏移量能让文字在视觉上居中
+        # 这个值是通过实际测试调整得到的，确保文字在按钮中垂直居中
+        text_y = button_y + 10
         
         # 使用put_chinese_text_pil函数绘制文字，确保中文正确显示
-        img = put_chinese_text_pil(img, creator_text, (text_x, text_y), creator_font_size, (255, 255, 255))
+        img, _ = put_chinese_text_pil(img, creator_text, (text_x, text_y), creator_font_size, (255, 255, 255))
     except Exception as e:
         print(f"按钮文字渲染错误: {e}")
-        # 备用方案，确保文字居中
-        cv2.putText(img, creator_text, (button_x + (button_width - 80) // 2, button_y + button_height // 2 + 8), 
-                    cv2.FONT_HERSHEY_COMPLEX, 0.7, (255, 255, 255), 2)
+        # 备用方案，使用cv2.putText，更容易实现居中
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.7
+        thickness = 2
+        text_size = cv2.getTextSize(creator_text, font, font_scale, thickness)[0]
+        text_x = button_x + (button_width - text_size[0]) // 2
+        text_y = button_y + 28  # 固定偏移量，确保文字居中
+        cv2.putText(img, creator_text, (text_x, text_y), font, font_scale, (255, 255, 255), thickness, cv2.LINE_AA)
     return img
 
 def draw_rounded_rectangle(img, top_left, bottom_right, color, radius, thickness=cv2.FILLED, line_type=cv2.LINE_AA):
@@ -231,22 +255,22 @@ def draw_rounded_rectangle(img, top_left, bottom_right, color, radius, thickness
     cv2.circle(img, (x1 + radius, y2 - radius), radius, color, thickness, line_type)
     cv2.circle(img, (x2 - radius, y2 - radius), radius, color, thickness, line_type)
 
-def draw_mode_selection_screen(img, hovered_button=None, clicked_button=None):
+def draw_mode_selection_screen(img, hovered_button=None, clicked_button=None, current_language='zh_cn'):
     """绘制游戏模式选择界面，包括自定义中文按钮"""
     h,w,_=img.shape
     bg=draw_starry_background(np.zeros_like(img))
     
-
-    title_text = "选择游戏模式"
+    # 根据当前语言设置标题和按钮文本
+    from game.utils.language_manager import get_translation
+    title_text = get_translation('menu_title')
     title_fs = 100  
 
     try:
-
         text_width, title_height = get_text_size(title_text, title_fs)
         title_x = (w - text_width) // 2
         title_y = h // 4  
 
-        bg = put_chinese_text_pil(bg, title_text, (title_x, title_y), title_fs, (255, 255, 255))  
+        bg, _ = put_chinese_text_pil(bg, title_text, (title_x, title_y), title_fs, (255, 255, 255))  
     except Exception as e:
         print(f"模式选择标题渲染错误: {e}")
 
@@ -255,7 +279,7 @@ def draw_mode_selection_screen(img, hovered_button=None, clicked_button=None):
             font_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "utils", "fonts", "simhei.ttf")
             if os.path.exists(font_path):
 
-                cv2.putText(bg, title_text, (title_x, title_y), cv2.FONT_HERSHEY_TRIPLEX, 3, (255, 255, 255), 8)  
+                bg, _ = put_chinese_text_pil(bg, title_text, (title_x, title_y), title_fs, (255, 255, 255))  
             else:
 
                 cv2.putText(bg, "Select Mode", (title_x, title_y), cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 255, 255), 8)  
@@ -270,65 +294,72 @@ def draw_mode_selection_screen(img, hovered_button=None, clicked_button=None):
     button_spacing = 40
     start_y = h // 2 - 60  
     
-
+    # 小按钮设置
+    small_button_width = 200
+    small_button_height = 50
+    small_button_spacing = 20
+    
+    # 根据当前语言设置按钮文本
+    classic_mode_text = get_translation('menu_classic_mode')
+    gesture_mode_text = get_translation('menu_gesture_mode')
+    
     buttons = [
-        {"id": "classic", "text": "经典模式", "color": (0, 128, 0), "hover_color": (0, 160, 0), "pos": (w // 2 - button_width - button_spacing // 2, start_y)},
-        {"id": "hand_tracking", "text": "手势控制模式", "color": (50, 100, 200), "hover_color": (66, 116, 216), "pos": (w // 2 + button_spacing // 2, start_y)}
+        {"id": "classic", "text": classic_mode_text, "color": (0, 128, 0), "hover_color": (0, 160, 0), "pos": (w // 2 - button_width - button_spacing // 2, start_y)},
+        {"id": "hand_tracking", "text": gesture_mode_text, "color": (50, 100, 200), "hover_color": (66, 116, 216), "pos": (w // 2 + button_spacing // 2, start_y)}
     ]
     
     for button in buttons:
         x, y = button["pos"]
         
-
+        # 检查是否为小按钮
+        is_small = button.get("small", False)
+        current_button_width = small_button_width if is_small else button_width
+        current_button_height = small_button_height if is_small else button_height
+        current_text_size = 24 if is_small else 48
+        current_border_radius = 8 if is_small else 15
+        
         if button["id"] == clicked_button:
-
             button_color = (255, 215, 0)  
         elif button["id"] == hovered_button:
-
             button_color = button["hover_color"]
         else:
-
             button_color = button["color"]
         
-
-        draw_rounded_rectangle(bg, (x, y), (x + button_width, y + button_height), button_color, 15)  
+        # 绘制按钮
+        draw_rounded_rectangle(bg, (x, y), (x + current_button_width, y + current_button_height), button_color, current_border_radius)  
         
-
         try:
-                text_size = 48  
-                text_width, text_height = get_text_size(button["text"], text_size)
-
-                text_x = x + (button_width - text_width) // 2
-
-                text_y = y + (button_height + text_height) // 2 - 36  
-
-                bg = put_chinese_text_pil(bg, button["text"], (text_x, text_y), text_size, (255, 255, 255))
+            text_width, text_height = get_text_size(button["text"], current_text_size)
+            text_x = x + (current_button_width - text_width) // 2
+            text_y = y + (current_button_height + text_height) // 2 - (18 if is_small else 36)  
+            bg, _ = put_chinese_text_pil(bg, button["text"], (text_x, text_y), current_text_size, (255, 255, 255))
         except Exception as e:
-                print(f"按钮文字渲染错误: {e}")
-
-                try:
-
-                    text_width = len(button["text"]) * 30  
-                    text_x = x + (button_width - text_width) // 2
-                    cv2.putText(bg, button["text"], (text_x, y + button_height // 2 + 16), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 1.6, (255, 255, 255), 4)  
-                except Exception as e2:
-                    print(f"按钮文字备用方案也失败: {e2}")
-
-                    simple_text = button["id"]  
-                    cv2.putText(bg, simple_text, (x + 20, y + 80), cv2.FONT_HERSHEY_SIMPLEX, 1.6, (255, 255, 255), 4)  
+            print(f"按钮文字渲染错误: {e}")
+            try:
+                text_scale = 0.8 if is_small else 1.6
+                text_y_offset = 8 if is_small else 16
+                cv2.putText(bg, button["text"], (text_x, y + current_button_height // 2 + text_y_offset), 
+                           cv2.FONT_HERSHEY_SIMPLEX, text_scale, (255, 255, 255), 2 if is_small else 4)  
+            except Exception as e2:
+                print(f"按钮文字备用方案也失败: {e2}")
+                simple_text = button["id"]  
+                cv2.putText(bg, simple_text, (x + 10 if is_small else x + 20, y + 30 if is_small else y + 80), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.8 if is_small else 1.6, (255, 255, 255), 2 if is_small else 4)  
     
 
     bg = draw_and_update_effects(bg)
 
     return bg
 
-def draw_settings_screen(img, current_color, mouse_pos=None, hovered_color=None):
+def draw_settings_screen(img, current_color, mouse_pos=None, hovered_color=None, current_language='zh_cn'):
     """绘制游戏设置界面，直接展示颜色块，不使用边框"""
     h, w, _ = img.shape
     bg = draw_starry_background(np.zeros_like(img))
     
-    title_text = "自定义蛇颜色"
+    # 导入翻译函数
+    from game.utils.language_manager import get_translation
+    
+    title_text = get_translation('settings_color')
     title_fs = 60
     # 使用改进的中文文本渲染函数
     try:
@@ -337,7 +368,7 @@ def draw_settings_screen(img, current_color, mouse_pos=None, hovered_color=None)
         title_x = (w - title_width) // 2
         title_y = h // 10 
         # 确保中文标题能正确显示
-        bg = put_chinese_text_pil(bg, title_text, (title_x, title_y), title_fs, (255, 255, 255))
+        bg, _ = put_chinese_text_pil(bg, title_text, (title_x, title_y), title_fs, (255, 255, 255))
     except Exception as e:
         print(f"设置标题渲染错误: {e}")
         # 备用方案：使用系统默认中文字体
@@ -347,7 +378,7 @@ def draw_settings_screen(img, current_color, mouse_pos=None, hovered_color=None)
         except Exception as e2:
             print(f"设置标题备用方案也失败: {e2}")
             # 最后尝试使用英文标题
-            cv2.putText(bg, "Customize Snake Color", ((w - 350) // 2, h // 6), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3)
+            cv2.putText(bg, get_translation('settings_color'), ((w - 350) // 2, h // 6), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3)
 
     solid_colors = [
         (255, 182, 193), (144, 238, 144), (173, 216, 230), (255, 255, 0),  # 粉色, 浅绿, 浅蓝, 黄色
@@ -356,10 +387,10 @@ def draw_settings_screen(img, current_color, mouse_pos=None, hovered_color=None)
         (0, 128, 128), (0, 0, 128), (255, 215, 0), (192, 192, 192)      # 青色, 海军蓝, 金色, 银色
     ]
     solid_color_names = [
-        "粉色", "浅绿", "浅蓝", "黄色",
-        "橙色", "紫色", "白色", "灰色",
-        "红色", "青色", "品红", "翠绿",
-        "青色", "海军蓝", "金色", "银色"
+        get_translation('color_pink'), get_translation('color_light_green'), get_translation('color_light_blue'), get_translation('color_yellow'),
+        get_translation('color_orange'), get_translation('color_purple'), get_translation('color_white'), get_translation('color_gray'),
+        get_translation('color_red'), get_translation('color_cyan'), get_translation('color_magenta'), get_translation('color_lime'),
+        get_translation('color_teal'), get_translation('color_navy'), get_translation('color_gold'), get_translation('color_silver')
     ]
 
     block_size = 80
@@ -401,7 +432,7 @@ def draw_settings_screen(img, current_color, mouse_pos=None, hovered_color=None)
         name = solid_color_names[i]
         # 使用改进的中文文本渲染函数
         try:
-            bg = put_chinese_text_pil(bg, name, (x + (block_size - 50)//2, y + block_size + 5), name_fs, (255, 255, 255))
+            bg, _ = put_chinese_text_pil(bg, name, (x + (block_size - 50)//2, y + block_size + 5), name_fs, (255, 255, 255))
         except Exception as e:
             print(f"颜色名称渲染错误: {e}")
             # 备用方案
@@ -412,7 +443,7 @@ def draw_settings_screen(img, current_color, mouse_pos=None, hovered_color=None)
     gradient_display_height = block_size
     gradient_start_y = solid_start_y + solid_grid_rows * (block_size + text_height_offset + spacing) + 50
 
-    grad_title_text = "渐变颜色"
+    grad_title_text = get_translation('color_gradient')
     grad_title_fs = 40
     # 使用改进的中文文本渲染函数
     try:
@@ -431,13 +462,13 @@ def draw_settings_screen(img, current_color, mouse_pos=None, hovered_color=None)
         except Exception as e2:
             print(f"渐变颜色标题备用方案也失败: {e2}")
             # 最后尝试使用英文标题
-            cv2.putText(bg, "Gradient Colors", ((w - 200) // 2, gradient_start_y - 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+            cv2.putText(bg, get_translation('color_gradient'), ((w - 200) // 2, gradient_start_y - 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
     gradient_grid_width = gradient_grid_cols * block_size + (gradient_grid_cols - 1) * spacing
     gradient_actual_start_x = (w - gradient_grid_width) // 2
 
     # 使用中文渐变颜色名称，与gradient_colors_data的键对应
-    gradient_color_names = ["彩虹", "蓝绿渐变", "火热渐变", "宇宙渐变"]
+    gradient_color_names = [get_translation('gradient_rainbow'), get_translation('gradient_blue_green'), get_translation('gradient_fire'), get_translation('gradient_cosmic')]
 
     for i, (grad_name, grad_value) in enumerate(gradient_colors_data.items()):
         col = i % gradient_grid_cols
@@ -498,19 +529,20 @@ def draw_settings_screen(img, current_color, mouse_pos=None, hovered_color=None)
     if mouse_pos and confirm_button_rect.collidepoint(mouse_pos):
         cv2.rectangle(bg, (confirm_button_rect.x, confirm_button_rect.y), (confirm_button_rect.x + confirm_button_rect.width, confirm_button_rect.y + confirm_button_rect.height), (0, 160, 0), -1)
     # 绘制确定按钮文字
+    confirm_text = get_translation('settings_save')
     try:
         # 计算确定按钮文字的居中位置
-        text_width, text_height = get_text_size("确定", 24)
+        text_width, text_height = get_text_size(confirm_text, 24)
         text_x = confirm_button_rect.x + (button_width - text_width) // 2
         # 调整Y坐标计算，确保文字在按钮内居中显示
         text_y = confirm_button_rect.y + button_height // 9 + text_height // 4
-        bg = put_chinese_text_pil(bg, "确定", (text_x, text_y), 24, (255, 255, 255))
+        bg = put_chinese_text_pil(bg, confirm_text, (text_x, text_y), 24, (255, 255, 255))
     except Exception as e:
         print(f"确定按钮文字渲染错误: {e}")
         # 确保文字居中
-        cv2.putText(bg, "确定", (confirm_button_rect.x + (button_width - 30) // 2, confirm_button_rect.y + button_height // 2 + 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        cv2.putText(bg, confirm_text, (confirm_button_rect.x + (button_width - 30) // 2, confirm_button_rect.y + button_height // 2 + 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
     # 添加确定按钮到颜色块列表
-    color_blocks.append((confirm_button_rect.x, confirm_button_rect.y, confirm_button_rect.x + confirm_button_rect.width, confirm_button_rect.y + confirm_button_rect.height, "confirm", "button", "确定"))
+    color_blocks.append((confirm_button_rect.x, confirm_button_rect.y, confirm_button_rect.x + confirm_button_rect.width, confirm_button_rect.y + confirm_button_rect.height, "confirm", "button", confirm_text))
     
     # 返回主菜单按钮
     menu_button_rect = pygame.Rect(start_x + button_width + button_spacing, button_y, button_width, button_height)
@@ -519,44 +551,47 @@ def draw_settings_screen(img, current_color, mouse_pos=None, hovered_color=None)
     if mouse_pos and menu_button_rect.collidepoint(mouse_pos):
         cv2.rectangle(bg, (menu_button_rect.x, menu_button_rect.y), (menu_button_rect.x + menu_button_rect.width, menu_button_rect.y + menu_button_rect.height), (120, 120, 120), -1)
     # 绘制返回主菜单按钮文字
+    menu_text = get_translation('game_return_menu')
     try:
         # 计算返回主菜单按钮文字的居中位置
-        text_width, text_height = get_text_size("返回主菜单", 24)
+        text_width, text_height = get_text_size(menu_text, 24)
         text_x = menu_button_rect.x + (button_width - text_width) // 2
         # 调整Y坐标计算，确保文字在按钮内居中显示
         text_y = menu_button_rect.y + button_height // 9 + text_height // 4
-        bg = put_chinese_text_pil(bg, "返回主菜单", (text_x, text_y), 24, (255, 255, 255))
+        bg = put_chinese_text_pil(bg, menu_text, (text_x, text_y), 24, (255, 255, 255))
     except Exception as e:
         print(f"返回主菜单按钮文字渲染错误: {e}")
         # 确保文字居中
-        cv2.putText(bg, "返回主菜单", (menu_button_rect.x + (button_width - 100) // 2, menu_button_rect.y + button_height // 2 + 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        cv2.putText(bg, menu_text, (menu_button_rect.x + (button_width - 100) // 2, menu_button_rect.y + button_height // 2 + 10), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
     # 添加返回主菜单按钮到颜色块列表
-    color_blocks.append((menu_button_rect.x, menu_button_rect.y, menu_button_rect.x + menu_button_rect.width, menu_button_rect.y + menu_button_rect.height, "menu", "button", "返回主菜单"))
+    color_blocks.append((menu_button_rect.x, menu_button_rect.y, menu_button_rect.x + menu_button_rect.width, menu_button_rect.y + menu_button_rect.height, "menu", "button", menu_text))
 
     return bg, color_blocks
 
-def draw_game_over_screen(img,score):
+def draw_game_over_screen(img,score, length):
     h,w,_=img.shape
     bg=draw_starry_background(np.zeros_like(img))
 
     try:
         # 使用改进的中文文本渲染函数
-        bg = put_rainbow_text_pil(bg, "游戏结束", ((w - 200) // 2, h // 3), 80)
-        bg = put_chinese_text_pil(bg, f"得分: {score}", ((w - 150) // 2, h // 2), 60, (0, 255, 255))
+        bg = put_rainbow_text_pil(bg, get_translation('game_end'), ((w - 200) // 2, h // 3), 80)
+        bg = put_chinese_text_pil(bg, get_translation('game_score').format(score), ((w - 150) // 2, h // 2), 60, (0, 255, 255))
+        bg = put_chinese_text_pil(bg, f"身长: {length}", ((w - 150) // 2, h // 2 + 40), 48, (255, 255, 255))
 
     except Exception as e:
         # 如果中文文本失败，则使用英文文本作为后备
         cv2.putText(bg, "Game Over", ((w - 200) // 2, h // 3), cv2.FONT_HERSHEY_SIMPLEX, 3, (255, 255, 255), 3)
         cv2.putText(bg, f"Score: {score}", ((w - 150) // 2, h // 2), cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 255), 2)
-        cv2.putText(bg, "Press 'R' to Restart", ((w - 250) // 2, h // 2 + 100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+        cv2.putText(bg, f"Length: {length}", ((w - 150) // 2, h // 2 + 40), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 2)
+        cv2.putText(bg, "Press 'R' to Restart", ((w - 250) // 2, h // 2 + 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
     return bg
     
 def draw_score(img,score): 
+    """绘制分数"""
     try:
-        # 使用改进的中文文本渲染函数
-        return put_chinese_text_pil(img, f"得分: {score}", (50, 50), 40, (255, 255, 255))
+        return put_chinese_text_pil(img, get_translation('game_score').format(score), (50, 50), 40, (255, 255, 255))
     except Exception as e:
-        # 如果中文文本失败，则使用英文文本作为后备
+        print(f"绘制分数时出错: {e}")
         img_copy = img.copy()
         cv2.putText(img_copy, f"Score: {score}", (50,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
         return img_copy

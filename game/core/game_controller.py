@@ -272,6 +272,7 @@ from game.core.game_ui import draw_mode_selection_screen, draw_startup_animation
 from game.utils.game_data import load_game_data, save_game_data
 from game.utils.chinese_text import put_chinese_text, put_rainbow_text
 from game.utils.improved_chinese_text import put_chinese_text_pil, put_rainbow_text_pil, put_chinese_text_with_background
+from game.utils.language_manager import get_translation
 
 
 try:
@@ -312,7 +313,8 @@ class GameController:
         self.screen_height = info.current_h
         
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height), pygame.FULLSCREEN)
-        pygame.display.set_caption("双模式贪吃蛇游戏")
+        # 使用翻译设置窗口标题
+        pygame.display.set_caption(get_translation('menu_title'))
         self.clock = pygame.time.Clock()
         
         pygame.display.flip()
@@ -345,6 +347,12 @@ class GameController:
         self.high_score_gesture = game_data['high_score_gesture']
         self.snake_color = game_data['snake_color'] 
         self.hide_camera_feed = game_data['hide_camera_feed'] 
+        
+        # 加载语言设置
+        self.current_language = game_data.get('language', 'zh_cn')
+        # 初始化语言管理器
+        from game.utils.language_manager import set_language
+        set_language(self.current_language)
         
         self.animation_frame_count = 0
 
@@ -470,7 +478,7 @@ class GameController:
                 (self.screen_width // 2 - button_width - button_spacing // 2, start_y),
                 (button_width, button_height)
             ),
-            text='经典模式',
+            text=get_translation('menu_classic_mode'),
             manager=self.ui_manager
         )
         
@@ -480,7 +488,7 @@ class GameController:
                 (self.screen_width // 2 + button_spacing // 2, start_y),
                 (button_width, button_height)
             ),
-            text='手势追踪模式',
+            text=get_translation('gesture_mode'),
             manager=self.ui_manager
         )
         
@@ -591,10 +599,10 @@ class GameController:
         
 
         solid_color_names = [
-            "粉色", "浅绿", "浅蓝", "黄色",
-            "橙色", "紫色", "白色", "灰色",
-            "红色", "青色", "品红", "翠绿",
-            "青色", "海军蓝", "金色", "银色"
+            get_translation('color_pink'), get_translation('color_light_green'), get_translation('color_light_blue'), get_translation('color_yellow'),
+            get_translation('color_orange'), get_translation('color_purple'), get_translation('color_white'), get_translation('color_gray'),
+            get_translation('color_red'), get_translation('color_cyan'), get_translation('color_magenta'), get_translation('color_lime'),
+            get_translation('color_teal'), get_translation('color_navy'), get_translation('color_gold'), get_translation('color_silver')
         ]
         
 
@@ -623,7 +631,7 @@ class GameController:
             self.color_buttons.append(button)
         
 
-        gradient_names = ["彩虹", "蓝绿渐变", "火热渐变", "宇宙渐变"]
+        gradient_names = [get_translation('gradient_rainbow'), get_translation('gradient_blue_green'), get_translation('gradient_fire'), get_translation('gradient_cosmic')]
         
         gradient_start_y = start_y + (len(solid_colors) // cols + 1) * (button_size + spacing + 25) + 40
         
@@ -656,15 +664,15 @@ class GameController:
                     if self.game_mode not in ['settings_menu', 'hand_tracking_settings', 'classic_settings']:
                         pygame.display.toggle_fullscreen()
                 
-
-                if self.game_mode in ['selection', 'classic_settings', 'hand_tracking_settings', 'settings_menu']:
+                # 处理输入事件
+                if self.game_mode in ['selection', 'classic_settings', 'hand_tracking_settings', 'settings_menu', 'language_settings']:
                     self.ui_manager.process_events(event)
                     self.handle_input(event)
                 elif self.game_mode in ['classic', 'hand_tracking', 'pause_menu']:
                     self.handle_input(event)
             
 
-            if self.game_mode in ['selection', 'classic_settings', 'hand_tracking_settings', 'settings_menu']:
+            if self.game_mode in ['selection', 'classic_settings', 'hand_tracking_settings', 'settings_menu', 'language_settings']:
                 self.ui_manager.update(time_delta)
             
             self.update_and_draw()
@@ -735,6 +743,9 @@ class GameController:
             elif self.game_mode == 'classic_settings':
 
                 self.game_mode = 'selection'
+            elif self.game_mode == 'language_settings':
+
+                self.game_mode = 'settings_menu'
 
 
         if not hasattr(self, 'hovered_button'):
@@ -767,7 +778,7 @@ class GameController:
                 mouse_pos = event.pos
 
                 img_temp = np.zeros((self.screen_height, self.screen_width, 3), dtype=np.uint8)
-                img_temp, color_blocks = draw_settings_screen(img_temp, self.snake_color, mouse_pos)
+                img_temp, color_blocks = draw_settings_screen(img_temp, self.snake_color, mouse_pos, current_language=self.current_language)
 
                 for block in color_blocks:
                     try:
@@ -875,13 +886,12 @@ class GameController:
         if self.game_mode != 'selection':
             return None
         
-        # 使用实际按钮的rect进行点击检测
-        # 经典模式按钮
+        # 检查主界面按钮
         if self.classic_mode_button.rect.collidepoint(mouse_x, mouse_y):
             return "classic"
-        # 手势追踪模式按钮
         elif self.hand_tracking_mode_button.rect.collidepoint(mouse_x, mouse_y):
             return "hand_tracking"
+        
         return None
         
     def check_button_hover(self, mouse_x, mouse_y):
@@ -890,13 +900,11 @@ class GameController:
         if self.game_mode != 'selection':
             return None
         
-
-
         if self.classic_mode_button.rect.collidepoint(mouse_x, mouse_y):
             return "classic"
-
         elif self.hand_tracking_mode_button.rect.collidepoint(mouse_x, mouse_y):
             return "hand_tracking"
+        
         return None
         
     def handle_button_click(self, button_id):
@@ -907,13 +915,10 @@ class GameController:
             
         if button_id == "classic":
             self.game_mode = 'classic'
-            # 只在首次初始化时设置颜色，后续重新开始时保留上一局的颜色
-            # 这样上一局的变色效果会延续到下一局
             self.classic_game.reset()
             global_particles.clear()
             self.hide_all_buttons()
         elif button_id == "hand_tracking":
-            # 显示加载屏幕，避免主线程阻塞
             self.is_loading = True
             self.loading_progress = 0
             self.game_mode = 'loading'
@@ -922,6 +927,27 @@ class GameController:
         elif button_id == "settings":
             self.game_mode = 'classic_settings'
             self.show_settings_ui()
+        elif button_id == "language_switch":
+            # 切换语言
+            from game.utils.language_manager import set_language, get_current_language
+            current_lang = get_current_language()
+            new_lang = 'en_us' if current_lang == 'zh_cn' else 'zh_cn'
+            set_language(new_lang)
+            self.current_language = new_lang
+            
+            # 保存语言设置
+            save_game_data({
+                'high_score_classic': self.high_score_classic,
+                'high_score_gesture': self.high_score_gesture,
+                'snake_color': self.snake_color,
+                'language': new_lang
+            })
+            
+            # 重新加载游戏以应用新语言
+            if hasattr(self, 'classic_game'):
+                self.classic_game.high_score = self.high_score_classic
+            if hasattr(self, 'hand_tracking_game'):
+                self.hand_tracking_game.high_score = self.high_score_gesture
     
     def handle_classic_game_input(self, event):
         """处理经典游戏模式的输入"""
@@ -981,23 +1007,21 @@ class GameController:
             
 
             try:
-                from utils.improved_chinese_text import put_chinese_text_pil
+                from game.utils.improved_chinese_text import put_chinese_text_pil
                 
-
                 if self.loading_progress < 20:
-                    loading_text = "正在释放旧资源..."
+                    loading_text = get_translation('loading_releasing_resources')
                 elif self.loading_progress < 50:
-                    loading_text = "正在初始化摄像头..."
+                    loading_text = get_translation('loading_initializing_camera')
                 elif self.loading_progress < 80:
-                    loading_text = "正在加载手势检测模型..."
+                    loading_text = get_translation('loading_gesture_model')
                 elif self.loading_progress < 100:
-                    loading_text = "正在初始化游戏状态..."
+                    loading_text = get_translation('loading_game_state')
                 else:
-                    loading_text = "加载完成，准备开始游戏..."
+                    loading_text = get_translation('loading_completed')
                 
-                img = put_chinese_text_pil(img, loading_text, (self.screen_width//2 - 200, self.screen_height//2 - 50), 40, (255, 255, 255))
+                img, _ = put_chinese_text_pil(img, loading_text, (self.screen_width//2 - 200, self.screen_height//2 - 50), 40, (255, 255, 255))
                 
-
                 bar_width = 400
                 bar_height = 30
                 bar_x = self.screen_width//2 - bar_width//2
@@ -1007,15 +1031,30 @@ class GameController:
                 progress_width = int(bar_width * (self.loading_progress / 100))
                 cv2.rectangle(img, (bar_x, bar_y), (bar_x + progress_width, bar_y + bar_height), (0, 255, 0), -1)
 
-                img = put_chinese_text_pil(img, f"{self.loading_progress}%", (self.screen_width//2 - 30, self.screen_height//2 + 60), 30, (255, 255, 255))
+                img, _ = put_chinese_text_pil(img, f"{self.loading_progress}%", (self.screen_width//2 - 30, self.screen_height//2 + 60), 30, (255, 255, 255))
             except Exception as e:
                 print(f"中文显示错误: {e}")
 
-                cv2.putText(img, "Loading Gesture Control Mode...", (self.screen_width//2 - 150, self.screen_height//2 - 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+                # 确保img是一个有效的OpenCV图像
+                if not isinstance(img, np.ndarray):
+                    img = np.zeros((self.screen_height, self.screen_width, 3), dtype=np.uint8)
+                
+                loading_gesture_text = get_translation('loading_gesture_mode')
+                font = cv2.FONT_HERSHEY_SIMPLEX
+                text_size = cv2.getTextSize(loading_gesture_text, font, 1, 2)[0]
+                text_x = self.screen_width//2 - text_size[0]//2
+                text_y = self.screen_height//2 - 50
+                cv2.putText(img, loading_gesture_text, (text_x, text_y), font, 1, (255, 255, 255), 2)
+                
                 cv2.rectangle(img, (self.screen_width//2 - 200, self.screen_height//2 + 20), (self.screen_width//2 + 200, self.screen_height//2 + 50), (100, 100, 100), -1)
                 progress_width = int(400 * (self.loading_progress / 100))
                 cv2.rectangle(img, (self.screen_width//2 - 200, self.screen_height//2 + 20), (self.screen_width//2 - 200 + progress_width, self.screen_height//2 + 50), (0, 255, 0), -1)
-                cv2.putText(img, f"{self.loading_progress}%", (self.screen_width//2 - 30, self.screen_height//2 + 80), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+                
+                percent_text = f"{self.loading_progress}%"
+                percent_size = cv2.getTextSize(percent_text, font, 1, 2)[0]
+                percent_x = self.screen_width//2 - percent_size[0]//2
+                percent_y = self.screen_height//2 + 80
+                cv2.putText(img, percent_text, (percent_x, percent_y), font, 1, (255, 255, 255), 2)
             
             self.draw_opencv_image(img)
             
@@ -1039,7 +1078,7 @@ class GameController:
         elif self.game_mode == 'selection':
             img = np.zeros((self.screen_height, self.screen_width, 3), dtype=np.uint8)
 
-            img = draw_mode_selection_screen(img, self.hovered_button, self.clicked_button)
+            img = draw_mode_selection_screen(img, self.hovered_button, self.clicked_button, self.current_language)
             self.draw_opencv_image(img)
 
         elif self.game_mode == 'classic_settings':
@@ -1048,7 +1087,7 @@ class GameController:
                 mouse_pos = pygame.mouse.get_pos()
                 img = np.zeros((self.screen_height, self.screen_width, 3), dtype=np.uint8)
 
-                img, color_blocks = draw_settings_screen(img, self.snake_color, mouse_pos)
+                img, color_blocks = draw_settings_screen(img, self.snake_color, mouse_pos, current_language=self.current_language)
                 self.draw_opencv_image(img)
             except Exception as e:
                 print(f"设置界面错误: {e}")
@@ -1115,10 +1154,10 @@ class GameController:
                 img = self.hand_tracking_game.update(img, None, mouse_pos, mouse_clicked, self.high_score_gesture)
                 try:
                     from game.utils.improved_chinese_text import put_chinese_text_pil
-                    img = put_chinese_text_pil(img, "未检测到手部", (self.screen_width//2 - 150, 50), 40, (255, 255, 0))
+                    img, _ = put_chinese_text_pil(img, get_translation('gesture_no_hand'), (self.screen_width//2 - 150, 50), 40, (255, 255, 0))
                 except Exception as e:
                     print(f"中文显示错误: {e}")
-                    cv2.putText(img, "未检测到手部", (self.screen_width//2 - 150, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
+                    cv2.putText(img, get_translation('gesture_no_hand'), (self.screen_width//2 - 150, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 0), 2)
             
             if self.hand_tracking_game.score > self.high_score_gesture:
                 self.high_score_gesture = self.hand_tracking_game.score
@@ -1143,7 +1182,7 @@ class GameController:
             self.screen.blit(overlay, (0, 0))
             
 
-            title_text = "游戏暂停"
+            title_text = get_translation('game_paused')
             try:
 
                 title_surface = self.font_large.render(title_text, True, (255, 255, 255))
@@ -1215,7 +1254,7 @@ class GameController:
 
             resume_button_color = button_hover_color if resume_button_rect.collidepoint(mouse_pos) else button_color
             pygame.draw.rect(self.screen, resume_button_color, resume_button_rect, border_radius=10)
-            resume_text = "返回游戏"
+            resume_text = get_translation('game_resume')
             try:
                 resume_surface = self.font_small.render(resume_text, True, text_color)
                 resume_text_rect = resume_surface.get_rect(center=resume_button_rect.center)
@@ -1226,7 +1265,7 @@ class GameController:
 
             menu_button_color = button_hover_color if menu_button_rect.collidepoint(mouse_pos) else button_color
             pygame.draw.rect(self.screen, menu_button_color, menu_button_rect, border_radius=10)
-            menu_text = "返回主菜单"
+            menu_text = get_translation('game_return_menu')
             try:
                 menu_surface = self.font_small.render(menu_text, True, text_color)
                 menu_text_rect = menu_surface.get_rect(center=menu_button_rect.center)
@@ -1237,7 +1276,7 @@ class GameController:
 
             exit_button_color = button_hover_color if exit_button_rect.collidepoint(mouse_pos) else button_color
             pygame.draw.rect(self.screen, exit_button_color, exit_button_rect, border_radius=10)
-            exit_text = "退出游戏"
+            exit_text = get_translation('menu_exit')
             try:
                 exit_surface = self.font_small.render(exit_text, True, text_color)
                 exit_text_rect = exit_surface.get_rect(center=exit_button_rect.center)
@@ -1279,7 +1318,7 @@ class GameController:
             self.screen.blit(overlay, (0, 0))
             
 
-            title_text = "游戏设置"
+            title_text = get_translation('settings_title')
             try:
 
                 title_surface = self.font_large.render(title_text, True, (255, 255, 255))
@@ -1297,7 +1336,7 @@ class GameController:
             text_color = (255, 255, 255)
             
 
-            num_buttons = 4
+            num_buttons = 5
             title_button_spacing = 60  
             total_menu_height = title_height + title_button_spacing + (num_buttons * button_height) + ((num_buttons - 1) * button_spacing)
             
@@ -1318,7 +1357,7 @@ class GameController:
                 self.screen.blit(overlay, (0, 0))
             
 
-            button_y_start = menu_start_y + title_height + title_button_spacing # 期末汇报（12月底）之前请勿乱用该项目
+            button_y_start = menu_start_y + title_height + title_button_spacing
             
 
             color_button_rect = pygame.Rect(
@@ -1336,18 +1375,24 @@ class GameController:
                 button_height
             )
             
-
-            menu_button_rect = pygame.Rect(
+            # 添加语言设置按钮
+            language_button_rect = pygame.Rect(
                 self.screen_width//2 - button_width//2,
                 button_y_start + 2 * (button_height + button_spacing),
                 button_width,
                 button_height
             )
             
-
-            exit_button_rect = pygame.Rect(
+            menu_button_rect = pygame.Rect(
                 self.screen_width//2 - button_width//2,
                 button_y_start + 3 * (button_height + button_spacing),
+                button_width,
+                button_height
+            )
+            
+            exit_button_rect = pygame.Rect(
+                self.screen_width//2 - button_width//2,
+                button_y_start + 4 * (button_height + button_spacing),
                 button_width,
                 button_height
             )
@@ -1359,7 +1404,7 @@ class GameController:
 
             color_button_color = button_hover_color if color_button_rect.collidepoint(mouse_pos) else button_color
             pygame.draw.rect(self.screen, color_button_color, color_button_rect, border_radius=10)
-            color_text = "蛇颜色设置"
+            color_text = get_translation('settings_color')
             try:
                 color_surface = self.font_small.render(color_text, True, text_color)
                 color_text_rect = color_surface.get_rect(center=color_button_rect.center)
@@ -1370,7 +1415,7 @@ class GameController:
 
             hand_tracking_settings_button_color = button_hover_color if hand_tracking_settings_button_rect.collidepoint(mouse_pos) else button_color
             pygame.draw.rect(self.screen, hand_tracking_settings_button_color, hand_tracking_settings_button_rect, border_radius=10)
-            hand_tracking_settings_text = "手势控制模式设置"
+            hand_tracking_settings_text = get_translation('menu_gesture_mode')
             try:
                 hand_tracking_settings_surface = self.font_small.render(hand_tracking_settings_text, True, text_color)
                 hand_tracking_settings_text_rect = hand_tracking_settings_surface.get_rect(center=hand_tracking_settings_button_rect.center)
@@ -1381,7 +1426,7 @@ class GameController:
 
             menu_button_color = button_hover_color if menu_button_rect.collidepoint(mouse_pos) else button_color
             pygame.draw.rect(self.screen, menu_button_color, menu_button_rect, border_radius=10)
-            menu_text = "返回主菜单"
+            menu_text = get_translation('game_return_menu')
             try:
                 menu_surface = self.font_small.render(menu_text, True, text_color)
                 menu_text_rect = menu_surface.get_rect(center=menu_button_rect.center)
@@ -1392,7 +1437,7 @@ class GameController:
 
             exit_button_color = button_hover_color if exit_button_rect.collidepoint(mouse_pos) else button_color
             pygame.draw.rect(self.screen, exit_button_color, exit_button_rect, border_radius=10)
-            exit_text = "退出游戏"
+            exit_text = get_translation('menu_exit')
             try:
                 exit_surface = self.font_small.render(exit_text, True, text_color)
                 exit_text_rect = exit_surface.get_rect(center=exit_button_rect.center)
@@ -1401,6 +1446,17 @@ class GameController:
                 print(f"退出按钮文本渲染错误: {e}")
             
 
+            # 绘制语言设置按钮
+            language_button_color = button_hover_color if language_button_rect.collidepoint(mouse_pos) else button_color
+            pygame.draw.rect(self.screen, language_button_color, language_button_rect, border_radius=10)
+            language_text = get_translation('settings_language')
+            try:
+                language_surface = self.font_small.render(language_text, True, text_color)
+                language_text_rect = language_surface.get_rect(center=language_button_rect.center)
+                self.screen.blit(language_surface, language_text_rect)
+            except Exception as e:
+                print(f"语言设置按钮文本渲染错误: {e}")
+            
             if mouse_clicked:
                 if color_button_rect.collidepoint(mouse_pos):
 
@@ -1408,6 +1464,9 @@ class GameController:
                 elif hand_tracking_settings_button_rect.collidepoint(mouse_pos):
 
                     self.game_mode = 'hand_tracking_settings'
+                elif language_button_rect.collidepoint(mouse_pos):
+                    # 进入语言设置界面
+                    self.game_mode = 'language_settings'
                 elif menu_button_rect.collidepoint(mouse_pos):
 
                     self.game_mode = 'selection'
@@ -1423,8 +1482,109 @@ class GameController:
             overlay.fill((0, 0, 0, 180))
             self.screen.blit(overlay, (0, 0))
             
+        elif self.game_mode == 'language_settings':
 
-            title_text = "手势控制模式设置"
+            overlay = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 180))
+            self.screen.blit(overlay, (0, 0))
+            
+            # 标题文本
+            title_text = get_translation('settings_language')
+            try:
+                title_surface = self.font_large.render(title_text, True, (255, 255, 255))
+                title_height = title_surface.get_height()
+            except Exception as e:
+                print(f"标题渲染错误: {e}")
+                title_height = 80  
+            
+            # 按钮配置
+            button_width = 400  
+            button_height = 70  
+            button_spacing = 50  
+            button_color = (100, 100, 100)
+            button_hover_color = (150, 150, 150)
+            text_color = (255, 255, 255)
+            
+            # 支持的语言列表
+            languages = [
+                {'code': 'zh_cn', 'name': get_translation('chinese')},
+                {'code': 'en_us', 'name': 'English'}
+            ]
+            
+            num_buttons = len(languages) + 1  # 语言选项 + 返回按钮
+            title_button_spacing = 60  
+            total_menu_height = title_height + title_button_spacing + (num_buttons * button_height) + ((num_buttons - 1) * button_spacing)
+            
+            # 计算菜单起始位置
+            menu_start_y = (self.screen_height - total_menu_height) // 2
+            
+            # 绘制标题
+            try:
+                title_rect = title_surface.get_rect(center=(self.screen_width//2, menu_start_y + title_height//2))
+                self.screen.blit(title_surface, title_rect)
+            except Exception as e:
+                print(f"标题渲染错误: {e}")
+                # 备用方案
+                img = np.zeros((self.screen_height, self.screen_width, 3), dtype=np.uint8)
+                from game.utils.improved_chinese_text import put_chinese_text
+                img = put_chinese_text(img, title_text, (self.screen_width//2 - 120, menu_start_y), 70, (255, 255, 255))
+                self.draw_opencv_image(img)
+                self.screen.blit(overlay, (0, 0))
+            
+            # 按钮起始位置
+            button_y_start = menu_start_y + title_height + title_button_spacing
+            
+            # 获取鼠标状态
+            mouse_pos = pygame.mouse.get_pos()
+            mouse_clicked = pygame.mouse.get_pressed()[0]
+            
+            # 绘制语言选项按钮
+            for i, lang in enumerate(languages):
+                lang_button_rect = pygame.Rect(
+                    self.screen_width//2 - button_width//2,
+                    button_y_start + i * (button_height + button_spacing),
+                    button_width,
+                    button_height
+                )
+                
+                # 当前语言高亮显示
+                if self.current_language == lang['code']:
+                    lang_button_color = (100, 200, 100)  # 绿色高亮
+                else:
+                    lang_button_color = button_hover_color if lang_button_rect.collidepoint(mouse_pos) else button_color
+                
+                # 绘制按钮
+                pygame.draw.rect(self.screen, lang_button_color, lang_button_rect, border_radius=10)
+                
+                # 绘制语言名称
+                try:
+                    lang_surface = self.font_small.render(lang['name'], True, text_color)
+                    lang_text_rect = lang_surface.get_rect(center=lang_button_rect.center)
+                    self.screen.blit(lang_surface, lang_text_rect)
+                except Exception as e:
+                    print(f"语言选项渲染错误: {e}")
+                
+                # 处理语言选择
+                if mouse_clicked and lang_button_rect.collidepoint(mouse_pos):
+                    self.current_language = lang['code']
+                    # 更新语言管理器
+                    from game.utils.language_manager import set_language
+                    set_language(self.current_language)
+                    # 保存语言设置
+                    save_game_data({
+                        'high_score_classic': self.high_score_classic, 
+                        'high_score_gesture': self.high_score_gesture, 
+                        'snake_color': self.snake_color,
+                        'language': self.current_language
+                    })
+
+        elif self.game_mode == 'hand_tracking_settings':
+
+            overlay = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, 180))
+            self.screen.blit(overlay, (0, 0))
+            
+            title_text = get_translation('menu_gesture_mode')
             try:
 
                 title_surface = self.font_large.render(title_text, True, (255, 255, 255))
@@ -1432,7 +1592,6 @@ class GameController:
             except Exception as e:
                 print(f"标题渲染错误: {e}")
                 title_height = 80  
-            
 
             button_width = 300  
             button_height = 70  
@@ -1440,12 +1599,10 @@ class GameController:
             button_color = (100, 100, 100)
             button_hover_color = (150, 150, 150)
             text_color = (255, 255, 255)
-            
 
             num_buttons = 2
             title_button_spacing = 60  
             total_menu_height = title_height + title_button_spacing + (num_buttons * button_height) + ((num_buttons - 1) * button_spacing)
-            
 
             menu_start_y = (self.screen_height - total_menu_height) // 2
             
@@ -1491,7 +1648,7 @@ class GameController:
             pygame.draw.rect(self.screen, camera_toggle_button_color, camera_toggle_button_rect, border_radius=10)
             
 
-            camera_toggle_text = "开启摄像头画面" if self.hide_camera_feed else "关闭摄像头画面"
+            camera_toggle_text = get_translation('settings_hide_camera')
             
             try:
                 camera_toggle_surface = self.font_small.render(camera_toggle_text, True, text_color)
@@ -1503,7 +1660,7 @@ class GameController:
 
             back_button_color = button_hover_color if back_button_rect.collidepoint(mouse_pos) else button_color
             pygame.draw.rect(self.screen, back_button_color, back_button_rect, border_radius=10)
-            back_text = "返回主界面"
+            back_text = get_translation('game_return_menu')
             try:
                 back_surface = self.font_small.render(back_text, True, text_color)
                 back_text_rect = back_surface.get_rect(center=back_button_rect.center)
@@ -1512,7 +1669,7 @@ class GameController:
                 print(f"返回按钮文本渲染错误: {e}")
             
 
-            status_text = "当前状态: 摄像头画面已" + ("隐藏" if self.hide_camera_feed else "显示")
+            status_text = get_translation('settings_camera') + ": " + (get_translation('menu_hide') if self.hide_camera_feed else get_translation('menu_show'))
             try:
                 status_surface = self.font_small.render(status_text, True, (200, 200, 200))
                 status_rect = status_surface.get_rect(center=(self.screen_width//2, back_button_rect.bottom + 40))
@@ -1610,14 +1767,14 @@ class GameController:
     def draw_hand_tracking_ui(self, img):
         game = self.hand_tracking_game
         try:
-            # 使用改进的中文文本渲染函数
-            img = put_chinese_text_pil(img, f"得分: {game.score}", (int(self.screen_width * 0.023), int(self.screen_height * 0.04)), 40, (50, 130, 246))
-            img = put_chinese_text_pil(img, f"最高分: {self.high_score_gesture}", (int(self.screen_width * 0.023), int(self.screen_height * 0.11)), 40, (50, 130, 246))
+            # 使用改进的中文文本渲染函数，配合翻译功能
+            img = put_chinese_text_pil(img, get_translation('game_score').format(game.score), (int(self.screen_width * 0.023), int(self.screen_height * 0.04)), 40, (50, 130, 246))
+            img = put_chinese_text_pil(img, get_translation('game_high_score').format(self.high_score_gesture), (int(self.screen_width * 0.023), int(self.screen_height * 0.11)), 40, (50, 130, 246))
         except Exception as e:
             # 如果中文文本失败，则使用英文文本作为后备
-            cv2.putText(img, f"Score: {game.score}", (int(self.screen_width * 0.023), int(self.screen_height * 0.04)), 
+            cv2.putText(img, get_translation('game_score').format(game.score), (int(self.screen_width * 0.023), int(self.screen_height * 0.04)), 
                        cv2.FONT_HERSHEY_SIMPLEX, 1, (50, 130, 246), 2)
-            cv2.putText(img, f"High Score: {self.high_score_gesture}", (int(self.screen_width * 0.023), int(self.screen_height * 0.11)), 
+            cv2.putText(img, get_translation('game_high_score').format(self.high_score_gesture), (int(self.screen_width * 0.023), int(self.screen_height * 0.11)), 
                        cv2.FONT_HERSHEY_SIMPLEX, 1, (50, 130, 246), 2)
         return img
 
@@ -1628,22 +1785,20 @@ class GameController:
             save_game_data({'high_score_classic': self.high_score_classic, 'high_score_gesture': self.high_score_gesture, 'snake_color': self.snake_color})
         try:
             # 使用改进的中文文本渲染函数
-            img = put_rainbow_text_pil(img, "游戏结束", (self.screen_width//2 - 160, self.screen_height//2 - 100), 80)
-            img = put_chinese_text_pil(img, f"最终得分: {game.score}", (self.screen_width//2 - 120, self.screen_height//2), 60, (50, 130, 246))
-            img = put_chinese_text_pil(img, f"最高分: {self.high_score_gesture}", (self.screen_width//2 - 120, self.screen_height//2 + 40), 40, (50, 130, 246))
+            img = put_rainbow_text_pil(img, get_translation('game_game_over'), (self.screen_width//2 - 160, self.screen_height//2 - 100), 80)
+            img = put_chinese_text_pil(img, get_translation('game_final_score').format(game.score), (self.screen_width//2 - 120, self.screen_height//2), 60, (50, 130, 246))
+            img = put_chinese_text_pil(img, get_translation('game_high_score').format(self.high_score_gesture), (self.screen_width//2 - 120, self.screen_height//2 + 40), 40, (50, 130, 246))
 
-            img = put_chinese_text_pil(img, "按 'M' 返回菜单", (self.screen_width//2 - 180, self.screen_height//2 + 140), 40, (255, 255, 255))
+            img = put_chinese_text_pil(img, get_translation('gesture_return_menu'), (self.screen_width//2 - 180, self.screen_height//2 + 140), 40, (255, 255, 255))
         except Exception as e:
             # 如果中文文本失败，则使用英文文本作为后备
-            cv2.putText(img, "GAME OVER", (self.screen_width//2 - 150, self.screen_height//2 - 100), 
+            cv2.putText(img, get_translation('game_game_over'), (self.screen_width//2 - 150, self.screen_height//2 - 100), 
                        cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 3)
-            cv2.putText(img, f"Final Score: {game.score}", (self.screen_width//2 - 120, self.screen_height//2), 
+            cv2.putText(img, get_translation('game_final_score').format(game.score), (self.screen_width//2 - 120, self.screen_height//2), 
                        cv2.FONT_HERSHEY_SIMPLEX, 1, (50, 130, 246), 2)
-            cv2.putText(img, f"High Score: {self.high_score_gesture}", (self.screen_width//2 - 120, self.screen_height//2 + 40), 
+            cv2.putText(img, get_translation('game_high_score').format(self.high_score_gesture), (self.screen_width//2 - 120, self.screen_height//2 + 40), 
                        cv2.FONT_HERSHEY_SIMPLEX, 1, (50, 130, 246), 2)
-            cv2.putText(img, "Press 'R' to Restart", (self.screen_width//2 - 180, self.screen_height//2 + 80), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
-            cv2.putText(img, "Press 'M' for Menu", (self.screen_width//2 - 180, self.screen_height//2 + 140), 
+            cv2.putText(img, get_translation('gesture_return_menu'), (self.screen_width//2 - 180, self.screen_height//2 + 140), 
                        cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
         return img
 

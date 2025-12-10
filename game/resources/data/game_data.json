@@ -1,10 +1,10 @@
 {
-  "high_score_classic": 11,
+  "high_score_classic": 94,
   "high_score_gesture": 26,
   "snake_color": [
-    192,
-    192,
-    192
+    255,
+    215,
+    0
   ],
-  "hide_camera_feed": false
+  "language": "en_us"
 }
