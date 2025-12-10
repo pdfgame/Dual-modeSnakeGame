@@ -199,8 +199,12 @@ class ClassicSnakeGame:
             while True:
                 # 随机生成障碍物位置
                 obstacle_pos = (random.randint(0, self.grid_width-1), random.randint(0, self.grid_height-1))
-                # 确保障碍物不会出现在蛇的初始位置，也不会与其他障碍物重叠
-                if obstacle_pos != self.snake[0] and obstacle_pos not in self.obstacles:
+                # 确保障碍物不会出现在蛇的初始位置或周围
+                snake_head = self.snake[0]
+                # 计算障碍物与蛇头的曼哈顿距离
+                distance = abs(obstacle_pos[0] - snake_head[0]) + abs(obstacle_pos[1] - snake_head[1])
+                # 确保蛇头周围2格内没有障碍物
+                if distance > 2 and obstacle_pos not in self.obstacles:
                     self.obstacles.append(obstacle_pos)
                     break
 
@@ -298,13 +302,15 @@ class ClassicSnakeGame:
         
         # 更新效果提示时间
         if self.effect_display:
-            # 检查冻结效果是否已经结束
-            if self.effects['freeze'] > 0:
-                # 冻结效果还在持续，不更新时间
+            # 检查是否是冻结效果
+            is_freeze_effect = get_translation('effect_freeze') in self.effect_display['text']
+            
+            if is_freeze_effect:
+                # 冻结效果：检查效果是否已经结束
                 if self.effects['freeze'] <= 0:
                     self.effect_display = None
             else:
-                # 其他效果提示按原逻辑更新
+                # 其他效果：正常倒计时
                 self.effect_display['time'] -= 1
                 if self.effect_display['time'] <= 0:
                     self.effect_display = None
@@ -329,19 +335,26 @@ class ClassicSnakeGame:
             # 更新上次刷新时间
             self.last_food_refresh_time = current_time_sec
         
-        # 应用加速和减速效果
-        if self.effects['speed_up'] > 0:
-            # 加速效果：移动间隔减半
-            current_move_interval = max(self.min_move_interval, self.base_move_interval * 0.5)
-        elif self.effects['speed_down'] > 0:
-            # 减速效果：移动间隔变为原来的25倍，更明显的减速
-            current_move_interval = self.base_move_interval * 25
-        elif self.acceleration_time > 0:
-            # 同方向按键加速
-            current_move_interval = max(self.min_move_interval, self.base_move_interval * 0.5)
+        # 初始化当前移动间隔为基础速度
+        current_move_interval = self.base_move_interval
+        
+        # 应用减速效果（优先级较低，先处理）
+        if self.effects['speed_down'] > 0:
+            # 减速效果：移动间隔变为当前速度的25倍
+            current_move_interval *= 25
+        
+        # 应用同方向按键加速
+        if self.acceleration_time > 0:
+            # 同方向按键加速：比当前速度快2倍
+            current_move_interval = max(self.min_move_interval, current_move_interval * 0.5)
             self.acceleration_time -= delta_time
             if self.acceleration_time <= 0:
                 self.acceleration_time = 0
+        
+        # 应用加速效果（优先级最高，最后处理）
+        if self.effects['speed_up'] > 0:
+            # 加速效果：比当前速度快2倍，确保总是大于当前速度
+            current_move_interval = max(self.min_move_interval, current_move_interval * 0.5)
         
         # 独立的真食物闪烁更新，确保一直稳定闪烁
         blink_time = 0.3  # 固定闪烁时间（秒）
@@ -539,7 +552,7 @@ class ClassicSnakeGame:
                     emit_particle_burst(30, screen_top_center, [((0, 0, 255), (150, 150, 255))])
                 elif prop == 'freeze':
                     self.effects['freeze'] = 30.0
-                    self.effect_display = {'text': get_translation('effect_freeze'), 'time': float('inf'), 'color': (0, 0, 255)}
+                    self.effect_display = {'text': get_translation('effect_freeze'), 'time': 60, 'color': (0, 0, 255)}
                     screen_top_center = (self.width // 2, 50)
                     emit_particle_burst(30, screen_top_center, [((255, 255, 255), (200, 200, 200))])
                 elif prop == 'none':
@@ -790,7 +803,7 @@ class ClassicSnakeGame:
 
         score_txt = self.font_small.render(get_translation('game_score').format(self.score), True, self.BLACK)
         hs_txt = self.font_small.render(get_translation('game_high_score').format(self.high_score), True, self.BLACK)
-        max_length_txt = self.font_small.render(f"最长记录: {self.max_length_record}", True, self.BLACK)
+        max_length_txt = self.font_small.render(get_translation('game_max_length_record').format(self.max_length_record), True, self.BLACK)
         screen.blit(score_txt, (15,15)); screen.blit(hs_txt, (15,55)); screen.blit(max_length_txt, (15,95))
         
 
@@ -840,7 +853,7 @@ class ClassicSnakeGame:
             screen.blit(score_txt, score_txt.get_rect(center=(self.width/2,self.height/2-60)))
             
             # 显示此次游戏的身长
-            length_txt=self.font_small.render(f"身长: {self.current_game_max_length}",True,self.BLACK)
+            length_txt=self.font_small.render(get_translation('game_body_length').format(self.current_game_max_length),True,self.BLACK)
             screen.blit(length_txt, length_txt.get_rect(center=(self.width/2,self.height/2-20)))
             
 

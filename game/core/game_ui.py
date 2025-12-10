@@ -452,7 +452,7 @@ def draw_settings_screen(img, current_color, mouse_pos=None, hovered_color=None,
         grad_title_x = (w - grad_title_width) // 2
         grad_title_y = gradient_start_y - 40
         # 确保渐变颜色标题能正确显示
-        bg = put_chinese_text_pil(bg, grad_title_text, (grad_title_x, grad_title_y), grad_title_fs, (255, 255, 255))
+        bg, _ = put_chinese_text_pil(bg, grad_title_text, (grad_title_x, grad_title_y), grad_title_fs, (255, 255, 255))
     except Exception as e:
         print(f"渐变颜色标题渲染错误: {e}")
         # 备用方案：使用系统默认中文字体
@@ -506,7 +506,7 @@ def draw_settings_screen(img, current_color, mouse_pos=None, hovered_color=None,
         
         # 使用改进的中文文本渲染函数
         try:
-            bg = put_chinese_text_pil(bg, gradient_color_names[i], (x + (block_size - 70)//2, y + gradient_display_height + 5), name_fs, (255, 255, 255))
+            bg, _ = put_chinese_text_pil(bg, gradient_color_names[i], (x + (block_size - 70)//2, y + gradient_display_height + 5), name_fs, (255, 255, 255))
         except Exception as e:
             print(f"渐变名称渲染错误: {e}")
             # 备用方案
@@ -536,7 +536,7 @@ def draw_settings_screen(img, current_color, mouse_pos=None, hovered_color=None,
         text_x = confirm_button_rect.x + (button_width - text_width) // 2
         # 调整Y坐标计算，确保文字在按钮内居中显示
         text_y = confirm_button_rect.y + button_height // 9 + text_height // 4
-        bg = put_chinese_text_pil(bg, confirm_text, (text_x, text_y), 24, (255, 255, 255))
+        bg, _ = put_chinese_text_pil(bg, confirm_text, (text_x, text_y), 24, (255, 255, 255))
     except Exception as e:
         print(f"确定按钮文字渲染错误: {e}")
         # 确保文字居中
@@ -558,7 +558,7 @@ def draw_settings_screen(img, current_color, mouse_pos=None, hovered_color=None,
         text_x = menu_button_rect.x + (button_width - text_width) // 2
         # 调整Y坐标计算，确保文字在按钮内居中显示
         text_y = menu_button_rect.y + button_height // 9 + text_height // 4
-        bg = put_chinese_text_pil(bg, menu_text, (text_x, text_y), 24, (255, 255, 255))
+        bg, _ = put_chinese_text_pil(bg, menu_text, (text_x, text_y), 24, (255, 255, 255))
     except Exception as e:
         print(f"返回主菜单按钮文字渲染错误: {e}")
         # 确保文字居中
@@ -575,8 +575,8 @@ def draw_game_over_screen(img,score, length):
     try:
         # 使用改进的中文文本渲染函数
         bg = put_rainbow_text_pil(bg, get_translation('game_end'), ((w - 200) // 2, h // 3), 80)
-        bg = put_chinese_text_pil(bg, get_translation('game_score').format(score), ((w - 150) // 2, h // 2), 60, (0, 255, 255))
-        bg = put_chinese_text_pil(bg, f"身长: {length}", ((w - 150) // 2, h // 2 + 40), 48, (255, 255, 255))
+        bg, _ = put_chinese_text_pil(bg, get_translation('game_score').format(score), ((w - 150) // 2, h // 2), 60, (0, 255, 255))
+        bg, _ = put_chinese_text_pil(bg, f"身长: {length}", ((w - 150) // 2, h // 2 + 40), 48, (255, 255, 255))
 
     except Exception as e:
         # 如果中文文本失败，则使用英文文本作为后备
@@ -589,7 +589,8 @@ def draw_game_over_screen(img,score, length):
 def draw_score(img,score): 
     """绘制分数"""
     try:
-        return put_chinese_text_pil(img, get_translation('game_score').format(score), (50, 50), 40, (255, 255, 255))
+        result, _ = put_chinese_text_pil(img, get_translation('game_score').format(score), (50, 50), 40, (255, 255, 255))
+        return result
     except Exception as e:
         print(f"绘制分数时出错: {e}")
         img_copy = img.copy()

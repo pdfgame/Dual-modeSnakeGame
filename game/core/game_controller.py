@@ -308,11 +308,18 @@ class GameController:
         except Exception as e:
             print(f"加载音效失败: {e}")
         
+        # 获取屏幕信息
         info = pygame.display.Info()
         self.screen_width = info.current_w
         self.screen_height = info.current_h
         
-        self.screen = pygame.display.set_mode((self.screen_width, self.screen_height), pygame.FULLSCREEN)
+        # 设置真正的全屏模式，使用pygame.FULLSCREEN和pygame.NOFRAME标志
+        # pygame.FULLSCREEN: 真正的全屏模式
+        # pygame.NOFRAME: 隐藏窗口边框和标题栏
+        self.screen = pygame.display.set_mode(
+            (self.screen_width, self.screen_height), 
+            pygame.FULLSCREEN | pygame.NOFRAME
+        )
         # 使用翻译设置窗口标题
         pygame.display.set_caption(get_translation('menu_title'))
         self.clock = pygame.time.Clock()
@@ -665,14 +672,13 @@ class GameController:
                         pygame.display.toggle_fullscreen()
                 
                 # 处理输入事件
-                if self.game_mode in ['selection', 'classic_settings', 'hand_tracking_settings', 'settings_menu', 'language_settings']:
-                    self.ui_manager.process_events(event)
+                if self.game_mode in ['selection', 'classic_settings', 'settings_menu', 'language_settings']:
+                    self.ui_manager.update(time_delta)
                     self.handle_input(event)
-                elif self.game_mode in ['classic', 'hand_tracking', 'pause_menu']:
+                elif self.game_mode in ['classic', 'hand_tracking', 'pause_menu', 'hand_tracking_settings']:
                     self.handle_input(event)
             
-
-            if self.game_mode in ['selection', 'classic_settings', 'hand_tracking_settings', 'settings_menu', 'language_settings']:
+            if self.game_mode in ['selection', 'classic_settings', 'settings_menu', 'language_settings']:
                 self.ui_manager.update(time_delta)
             
             self.update_and_draw()
@@ -837,47 +843,80 @@ class GameController:
 
                 mouse_x, mouse_y = event.pos
                 
+                # 使用update_and_draw方法中已经创建的矩形对象进行点击检测
+                if hasattr(self, 'camera_toggle_button_rect') and self.camera_toggle_button_rect.collidepoint(mouse_x, mouse_y):
+                    self.hide_camera_feed = not self.hide_camera_feed
+                    print(f"摄像头画面状态切换为: {'显示' if not self.hide_camera_feed else '隐藏'}")
+                    save_game_data({'high_score_classic': self.high_score_classic, 'high_score_gesture': self.high_score_gesture, 'snake_color': self.snake_color, 'hide_camera_feed': self.hide_camera_feed})
+                    return
 
-                button_width = 300
-                button_height = 70
-                button_spacing = 50
+                elif hasattr(self, 'hand_tracking_back_button_rect') and self.hand_tracking_back_button_rect.collidepoint(mouse_x, mouse_y):
+                    self.game_mode = 'settings_menu'
+                    return
+        elif self.game_mode == 'language_settings':
+            # 处理语言设置界面的鼠标点击
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                mouse_x, mouse_y = event.pos
+                
+                # 与update_and_draw方法保持一致的按钮位置计算
+                languages = [
+                    {'code': 'zh_cn', 'name': get_translation('chinese')},
+                    {'code': 'en_us', 'name': 'English'}
+                ]
+                
+                button_width = 400  
+                button_height = 70  
+                button_spacing = 50  
+                button_color = (100, 100, 100)
+                button_hover_color = (150, 150, 150)
+                text_color = (255, 255, 255)
                 title_button_spacing = 60
                 
-
-                title_height = 80  
-                num_buttons = 2
+                # 重新计算与update_and_draw相同的位置
+                try:
+                    title_text = get_translation('settings_language')
+                    title_surface = self.font_large.render(title_text, True, (255, 255, 255))
+                    title_height = title_surface.get_height()
+                except Exception as e:
+                    title_height = 80  
+                
+                num_buttons = len(languages) + 1  # 语言选项 + 返回按钮
                 total_menu_height = title_height + title_button_spacing + (num_buttons * button_height) + ((num_buttons - 1) * button_spacing)
                 menu_start_y = (self.screen_height - total_menu_height) // 2
                 button_y_start = menu_start_y + title_height + title_button_spacing
                 
-
-                camera_toggle_button_rect = pygame.Rect(
-                    self.screen_width//2 - button_width//2,
-                    button_y_start,
-                    button_width,
-                    button_height
-                )
+                # 遍历语言列表，检查点击
+                for i, lang in enumerate(languages):
+                    lang_button_rect = pygame.Rect(
+                        self.screen_width//2 - button_width//2,
+                        button_y_start + i * (button_height + button_spacing),
+                        button_width,
+                        button_height
+                    )
+                    
+                    if lang_button_rect.collidepoint(mouse_x, mouse_y):
+                        # 更新语言设置
+                        self.current_language = lang['code']
+                        from game.utils.language_manager import set_language
+                        set_language(self.current_language)
+                        save_game_data({
+                            'high_score_classic': self.high_score_classic, 
+                            'high_score_gesture': self.high_score_gesture, 
+                            'snake_color': self.snake_color,
+                            'language': self.current_language
+                        })
+                        return  # 找到匹配的按钮，返回
                 
-
+                # 检查返回按钮点击
                 back_button_rect = pygame.Rect(
                     self.screen_width//2 - button_width//2,
-                    button_y_start + button_height + button_spacing,
+                    button_y_start + len(languages) * (button_height + button_spacing),
                     button_width,
                     button_height
                 )
                 
-
-                if camera_toggle_button_rect.collidepoint(mouse_x, mouse_y):
-
-                    self.hide_camera_feed = not self.hide_camera_feed
-                    print(f"摄像头画面状态切换为: {'显示' if not self.hide_camera_feed else '隐藏'}")
-
-                    save_game_data({'high_score_classic': self.high_score_classic, 'high_score_gesture': self.high_score_gesture, 'snake_color': self.snake_color, 'hide_camera_feed': self.hide_camera_feed})
-                    return
-
-                elif back_button_rect.collidepoint(mouse_x, mouse_y):
-
-                    self.game_mode = 'settings_menu'
+                if back_button_rect.collidepoint(mouse_x, mouse_y):
+                    self.game_mode = 'settings_menu'  # 返回设置菜单
                     return
     
     def check_button_click(self, mouse_x, mouse_y):
@@ -1020,7 +1059,13 @@ class GameController:
                 else:
                     loading_text = get_translation('loading_completed')
                 
-                img, _ = put_chinese_text_pil(img, loading_text, (self.screen_width//2 - 200, self.screen_height//2 - 50), 40, (255, 255, 255))
+                # 获取文本尺寸以实现居中
+                _, text_size = put_chinese_text_pil(img.copy(), loading_text, (0, 0), 40, (255, 255, 255))
+                text_width, _ = text_size
+                # 计算水平居中位置
+                text_x = self.screen_width // 2 - text_width // 2
+                text_y = self.screen_height // 2 - 50
+                img, _ = put_chinese_text_pil(img, loading_text, (text_x, text_y), 40, (255, 255, 255))
                 
                 bar_width = 400
                 bar_height = 30
@@ -1476,12 +1521,6 @@ class GameController:
 
                     pygame.event.post(pygame.event.Event(pygame.QUIT))
 
-        elif self.game_mode == 'hand_tracking_settings':
-
-            overlay = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
-            overlay.fill((0, 0, 0, 180))
-            self.screen.blit(overlay, (0, 0))
-            
         elif self.game_mode == 'language_settings':
 
             overlay = pygame.Surface((self.screen_width, self.screen_height), pygame.SRCALPHA)
@@ -1564,19 +1603,7 @@ class GameController:
                 except Exception as e:
                     print(f"语言选项渲染错误: {e}")
                 
-                # 处理语言选择
-                if mouse_clicked and lang_button_rect.collidepoint(mouse_pos):
-                    self.current_language = lang['code']
-                    # 更新语言管理器
-                    from game.utils.language_manager import set_language
-                    set_language(self.current_language)
-                    # 保存语言设置
-                    save_game_data({
-                        'high_score_classic': self.high_score_classic, 
-                        'high_score_gesture': self.high_score_gesture, 
-                        'snake_color': self.snake_color,
-                        'language': self.current_language
-                    })
+                # 语言选择的点击处理已移至handle_input方法
 
         elif self.game_mode == 'hand_tracking_settings':
 
@@ -1642,13 +1669,17 @@ class GameController:
             
 
             mouse_pos = pygame.mouse.get_pos()
+            mouse_clicked = pygame.mouse.get_pressed()[0]
             
-
             camera_toggle_button_color = button_hover_color if camera_toggle_button_rect.collidepoint(mouse_pos) else button_color
             pygame.draw.rect(self.screen, camera_toggle_button_color, camera_toggle_button_rect, border_radius=10)
             
 
-            camera_toggle_text = get_translation('settings_hide_camera')
+            # 根据当前hide_camera_feed状态显示不同的按钮文本
+            if self.hide_camera_feed:
+                camera_toggle_text = get_translation('settings_show_camera')
+            else:
+                camera_toggle_text = get_translation('settings_hide_camera')
             
             try:
                 camera_toggle_surface = self.font_small.render(camera_toggle_text, True, text_color)
@@ -1657,10 +1688,9 @@ class GameController:
             except Exception as e:
                 print(f"摄像头开关按钮文本渲染错误: {e}")
             
-
             back_button_color = button_hover_color if back_button_rect.collidepoint(mouse_pos) else button_color
             pygame.draw.rect(self.screen, back_button_color, back_button_rect, border_radius=10)
-            back_text = get_translation('game_return_menu')
+            back_text = get_translation('settings_return')
             try:
                 back_surface = self.font_small.render(back_text, True, text_color)
                 back_text_rect = back_surface.get_rect(center=back_button_rect.center)
@@ -1668,8 +1698,11 @@ class GameController:
             except Exception as e:
                 print(f"返回按钮文本渲染错误: {e}")
             
-
-            status_text = get_translation('settings_camera') + ": " + (get_translation('menu_hide') if self.hide_camera_feed else get_translation('menu_show'))
+            # 显示当前摄像头状态
+            if self.hide_camera_feed:
+                status_text = get_translation('settings_camera') + ": " + get_translation('menu_hide') + " (显示固定背景)"
+            else:
+                status_text = get_translation('settings_camera') + ": " + get_translation('menu_show') + " (显示摄像头画面)"
             try:
                 status_surface = self.font_small.render(status_text, True, (200, 200, 200))
                 status_rect = status_surface.get_rect(center=(self.screen_width//2, back_button_rect.bottom + 40))
@@ -1727,29 +1760,36 @@ class GameController:
             return None
 
     def draw_opencv_image(self, img):
+        """将OpenCV图像绘制到pygame屏幕上"""
         # 确保图像数据类型正确
         if img.dtype != np.uint8:
             img = img.astype(np.uint8)
-            
-        # 转换颜色空间
-        if len(img.shape) == 3 and img.shape[2] == 3:
-            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        elif len(img.shape) == 3 and img.shape[2] == 4:
-            img_rgb = cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA)
-        else:
-            # 灰度图
-            img_rgb = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
-            
-        # 创建Pygame Surface
-        try:
-            # 尝试使用更直接的方法
-            pygame_surface = pygame.surfarray.make_surface(np.transpose(img_rgb, (1, 0, 2)))
-        except:
-            # 如果失败，创建一个纯色表面用于测试
-            pygame_surface = pygame.Surface((img_rgb.shape[1], img_rgb.shape[0]))
-            pygame_surface.fill((0, 255, 0))  # 绿色，便于识别
         
-        self.screen.blit(pygame_surface, (0, 0))
+        # 将OpenCV图像转换为pygame表面
+        if len(img.shape) == 3:
+            if img.shape[2] == 3:
+                # BGR to RGB
+                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                # pygame.surfarray.make_surface期望行优先数据，而OpenCV是列优先
+                # 需要转置图像数据，将(height, width, channels)转换为(width, height, channels)
+                surface = pygame.surfarray.make_surface(np.transpose(img_rgb, (1, 0, 2)))
+            elif img.shape[2] == 4:
+                # BGRA to RGBA
+                img_rgba = cv2.cvtColor(img, cv2.COLOR_BGRA2RGBA)
+                # 转置图像数据
+                surface = pygame.surfarray.make_surface(np.transpose(img_rgba, (1, 0, 2)))
+            else:
+                return  
+        elif len(img.shape) == 2:
+            # 灰度图转换为RGB
+            img_rgb = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+            # 转置图像数据
+            surface = pygame.surfarray.make_surface(np.transpose(img_rgb, (1, 0, 2)))
+        else:
+            return  # 不支持的图像维度
+        
+        # 将表面绘制到屏幕上
+        self.screen.blit(surface, (0, 0))
 
     def initialize_camera(self):
         try:

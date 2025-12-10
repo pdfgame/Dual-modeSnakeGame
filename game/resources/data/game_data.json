@@ -2,9 +2,8 @@
   "high_score_classic": 94,
   "high_score_gesture": 26,
   "snake_color": [
-    255,
-    215,
-    0
-  ],
-  "language": "zh_cn"
+    128,
+    0,
+    128
+  ]
 }

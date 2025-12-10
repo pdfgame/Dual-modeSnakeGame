@@ -133,6 +133,10 @@ _translations = {
         'zh_cn': '隐藏摄像头画面',
         'en_us': 'Hide Camera Feed'
     },
+    'settings_show_camera': {
+        'zh_cn': '显示摄像头画面',
+        'en_us': 'Show Camera Feed'
+    },
     'settings_save': {
         'zh_cn': '保存设置',
         'en_us': 'Save Settings'
@@ -306,6 +310,14 @@ _translations = {
     'game_end': {
         'zh_cn': '游戏结束',
         'en_us': 'Game Over'
+    },
+    'game_body_length': {
+        'zh_cn': '身长: {0}',
+        'en_us': 'Body Length: {0}'
+    },
+    'game_max_length_record': {
+        'zh_cn': '最长记录: {0}',
+        'en_us': 'Max Length: {0}'
     },
     
     # 其他
