@@ -29,6 +29,7 @@ class SnakeGame:
         # 音频相关属性
         self.boom_sound = None
         self.fail_sound = None
+        self.sound_played_this_frame = False  # 标志位，确保每个帧只播放一次音效
         
         self.gradient_colors_data = {
             "彩虹": [((255,0,0),(255,165,0)), ((255,165,0),(255,255,0)), ((255,255,0),(0,128,0)), ((0,128,0),(0,0,255)), ((0,0,255),(75,0,130)), ((75,0,130),(238,130,238))],
@@ -141,6 +142,7 @@ class SnakeGame:
         self.gameOver = False
         self.return_to_menu = False
         self.game_over_reason = None  
+        self.sound_played_this_frame = False  # 重置音效播放标志位
         self.randomFoodLocation()
         self.randomObstacleLocations()  
         self.last_obstacle_refresh = 0  
@@ -148,6 +150,8 @@ class SnakeGame:
         self.last_detected_head = None
 
     def update(self, imgMain, currentHead, mouse_pos=None, mouse_clicked=False, high_score=0):
+        # 重置音效播放标志位，确保每个帧只播放一次音效
+        self.sound_played_this_frame = False
 
         if high_score > self.high_score:
             self.high_score = high_score
@@ -474,10 +478,11 @@ class SnakeGame:
                     self.high_score = self.score
                 print(f"得分: {self.score}, 最高分: {self.high_score}")
                 
-                # 播放吃到食物音效
-                if self.boom_sound:
+                # 播放吃到食物音效，确保每个帧只播放一次
+                if self.boom_sound and not self.sound_played_this_frame:
                     try:
                         self.boom_sound.play()
+                        self.sound_played_this_frame = True  # 标记为已播放
                     except Exception as e:
                         print(f"播放吃到食物音效失败: {e}")
 

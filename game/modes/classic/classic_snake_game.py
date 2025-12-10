@@ -48,6 +48,7 @@ class ClassicSnakeGame:
         self.current_freeze_display = 0  
         self.boom_sound = None
         self.fail_sound = None
+        self.sound_played_this_frame = False  # 标志位，确保每个帧只播放一次音效
         self.reset()
 
     def reset(self):
@@ -75,6 +76,7 @@ class ClassicSnakeGame:
         self.food_blink_interval = 1.0  
         self.food_visible = True
         
+        self.sound_played_this_frame = False  # 重置音效播放标志位
 
         self.fake_foods = []
         self.fake_foods_colors = []
@@ -96,7 +98,6 @@ class ClassicSnakeGame:
         self.obstacles = []
         self._generate_obstacles()
         
-
 
         self.foods = []  
         self.food_colors = []  
@@ -262,6 +263,9 @@ class ClassicSnakeGame:
     def update(self):
         if self.game_over or not self.game_started: return
         
+        # 重置音效播放标志位，确保每个帧只播放一次音效
+        self.sound_played_this_frame = False
+        
         current_time = pygame.time.get_ticks()
         time_since_last_move = current_time - self.last_move_time
         delta_time = time_since_last_move / 1000.0  # 转换为秒
@@ -384,6 +388,7 @@ class ClassicSnakeGame:
                         self.fail_sound.play()
                     except Exception as e:
                         print(f"播放游戏结束音效失败: {e}")
+                return  # 游戏结束，退出update方法
             elif nh in self.snake:
                 # 碰到自己身体
                 self.game_over_reason = get_translation('classic_self_death')
@@ -394,6 +399,7 @@ class ClassicSnakeGame:
                         self.fail_sound.play()
                     except Exception as e:
                         print(f"播放游戏结束音效失败: {e}")
+                return  # 游戏结束，退出update方法
             elif nh in self.obstacles:
                 # 碰到障碍物
                 self.game_over_reason = get_translation('classic_obstacle_death')
@@ -404,30 +410,17 @@ class ClassicSnakeGame:
                         self.fail_sound.play()
                     except Exception as e:
                         print(f"播放游戏结束音效失败: {e}")
-            elif self._check_fake_foods():
-                # 检查是否吃到炸弹
-                # 播放游戏结束音效
-                if self.fail_sound:
-                    try:
-                        self.fail_sound.play()
-                    except Exception as e:
-                        print(f"播放游戏结束音效失败: {e}")
-            
-            if self.game_over:
-                # 实时更新最高分
-                if self.score > self.high_score:
-                    self.high_score = self.score
-                return
-            
+                return  # 游戏结束，退出update方法
+            # 蛇移动：在蛇头位置插入新的身体段
             self.snake.insert(0, nh)
             
             # 检查是否吃到真食物
             food_eaten = False
             eaten_index = -1
             
-            # 遍历所有真食物，检查是否吃到
-            for i in range(len(self.foods)):
-                if self.snake[0] == self.foods[i]:
+            # 使用列表副本进行遍历，避免在遍历过程中修改列表导致的问题
+            for i, food in enumerate(self.foods.copy()):
+                if self.snake[0] == food:
                     food_eaten = True
                     eaten_index = i
                     break
@@ -437,10 +430,11 @@ class ClassicSnakeGame:
                 pos_px = (self.foods[eaten_index][0]*self.grid_size+self.grid_size//2+10, self.foods[eaten_index][1]*self.grid_size+self.grid_size//2+10)
                 emit_particle_burst(30, pos_px, [self.food_colors[eaten_index]])
                 
-                # 播放吃到食物音效
-                if self.boom_sound:
+                # 播放吃到食物音效，确保每个帧只播放一次
+                if self.boom_sound and not self.sound_played_this_frame:
                     try:
                         self.boom_sound.play()
+                        self.sound_played_this_frame = True  # 标记为已播放
                     except Exception as e:
                         print(f"播放吃到食物音效失败: {e}")
                 
@@ -464,7 +458,7 @@ class ClassicSnakeGame:
                 if self.score > self.high_score:
                     self.high_score = self.score
                 
-                # 吃到真食物后，移除被吃掉的食物，并生成一个新的真食物
+                # 吃到真食物后，移除被吃掉的食物
                 self.foods.pop(eaten_index)
                 self.food_colors.pop(eaten_index)
                 self.is_double_score_foods.pop(eaten_index)
@@ -486,6 +480,16 @@ class ClassicSnakeGame:
             current_length = len(self.snake)
             if current_length > self.current_game_max_length:
                 self.current_game_max_length = current_length
+            
+            # 检查游戏是否结束，确保游戏结束音效只播放一次
+            if self.game_over and not hasattr(self, 'game_over_sound_played'):
+                # 播放游戏结束音效
+                if self.fail_sound:
+                    try:
+                        self.fail_sound.play()
+                        self.game_over_sound_played = True  # 标记为已播放
+                    except Exception as e:
+                        print(f"播放游戏结束音效失败: {e}")
         
         # 更新假食物年龄
         for i in range(len(self.fake_foods_age)):
@@ -497,17 +501,19 @@ class ClassicSnakeGame:
         to_remove = []
         fake_food_eaten = False  
         
-        for i, fake_food in enumerate(self.fake_foods):
+        # 使用列表副本进行遍历，避免在遍历过程中修改列表导致的无限循环
+        for i, fake_food in enumerate(self.fake_foods.copy()):
             if snake_head == fake_food:
                 prop = self.fake_foods_properties[i]
                 pos_px = (fake_food[0]*self.grid_size+self.grid_size//2+10, fake_food[1]*self.grid_size+self.grid_size//2+10)
                 
                 emit_particle_burst(20, pos_px, [self.fake_foods_colors[i]])
                 
-                # 播放吃到食物音效（炸弹除外）
-                if prop != 'bomb' and self.boom_sound:
+                # 播放吃到食物音效（炸弹除外），确保每个帧只播放一次
+                if prop != 'bomb' and self.boom_sound and not self.sound_played_this_frame:
                     try:
                         self.boom_sound.play()
+                        self.sound_played_this_frame = True  # 标记为已播放
                     except Exception as e:
                         print(f"播放吃到食物音效失败: {e}")
                 
@@ -564,12 +570,15 @@ class ClassicSnakeGame:
                 
                 to_remove.append(i)
         
+        # 先移除所有需要移除的假食物
         for i in sorted(to_remove, reverse=True):
             self.fake_foods.pop(i)
             self.fake_foods_colors.pop(i)
             self.fake_foods_age.pop(i)
             self.fake_foods_properties.pop(i)
-            
+        
+        # 然后生成新的假食物，保持假食物数量稳定
+        for _ in range(len(to_remove)):
             pos = self._place_fake_food()
             self.fake_foods.append(pos)
             
