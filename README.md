@@ -77,7 +77,7 @@ SnakeGame-main/
 
 ## 安装依赖 / Install Dependencies
 
-1. 确保已安装Python 3.11或更高版本
+1. 确保已安装Python 3.10或3.11，过高版本可能无法兼容
    Ensure Python 3.11 or higher is installed
 
 2. 安装游戏依赖：
