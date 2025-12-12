@@ -104,7 +104,7 @@ class ClassicSnakeGame:
         self.is_double_score_foods = []  
         
 
-        for _ in range(random.randint(2, 3)):
+        for _ in range(random.randint(10, 15)):
             pos, color = self._place_food()
             self.foods.append(pos)
             self.food_colors.append(color)
@@ -140,8 +140,8 @@ class ClassicSnakeGame:
         # 假食物属性列表和概率分布
         # 属性包括：炸弹、变色、加速、减速、冻结
         properties = ['bomb', 'color_change', 'speed_up', 'speed_down', 'freeze', 'none']
-        # 概率分布：降低炸弹概率到5%，普通假食物占31%
-        weights = [0.05, 0.16, 0.16, 0.16, 0.16, 0.31]
+        # 概率分布：降低炸弹概率到3%，普通假食物占33%
+        weights = [0.03, 0.16, 0.16, 0.16, 0.16, 0.33]
         
         for i in range(num_fake_foods):
             pos = self._place_fake_food()
@@ -331,8 +331,8 @@ class ClassicSnakeGame:
             self.food_colors = []
             self.is_double_score_foods = []
             
-            # 生成2-3个新的真食物
-            for _ in range(random.randint(2, 3)):
+            # 生成3-5个新的真食物
+            for _ in range(random.randint(3, 5)):
                 pos, color = self._place_food()
                 self.foods.append(pos)
                 self.food_colors.append(color)
