@@ -111,7 +111,7 @@ class ClassicSnakeGame:
             self.is_double_score_foods.append(random.random() < 0.2)  
         
 
-        self._generate_fake_foods()
+        self._generate_other_foods()
         
 
         self.restart_button_rect = None
@@ -125,29 +125,29 @@ class ClassicSnakeGame:
         self.last_countdown_update = 0  
         self.current_freeze_display = 0  
     
-    def _generate_fake_foods(self):
-        """生成多个假食物，增加游戏难度和多样性"""
-        # 清除旧的假食物
+    def _generate_other_foods(self):
+        """生成多个食物，增加游戏难度和多样性"""
+        # 清除旧的食物
         self.fake_foods = []
         self.fake_foods_colors = []
         self.fake_foods_age = []
-        self.fake_foods_properties = []  # 存储每个假食物的属性
+        self.fake_foods_properties = []  # 存储每个食物的属性
         
-        # 增加假食物数量：生成20-28个假食物，提高游戏难度
-        num_fake_foods = random.randint(20, 28)
+        # 增加食物数量：生成20-28个食物，提高游戏难度
+        num_other_foods = random.randint(20, 28)
         bomb_count = 0
         
-        # 假食物属性列表和概率分布
+        # 食物属性列表和概率分布
         # 属性包括：炸弹、变色、加速、减速、冻结
         properties = ['bomb', 'color_change', 'speed_up', 'speed_down', 'freeze', 'none']
-        # 概率分布：降低炸弹概率到3%，普通假食物占33%
+        # 概率分布：炸弹概率为1%，其他食物占35%
         weights = [0.01, 0.16, 0.16, 0.16, 0.16, 0.35]
         
-        for i in range(num_fake_foods):
-            pos = self._place_fake_food()
+        for i in range(num_other_foods):
+            pos = self._place_other_food()
             self.fake_foods.append(pos)
             
-            # 随机选择假食物属性
+            # 随机选择食物属性
             prop = random.choices(properties, weights=weights)[0]
             
             # 限制炸弹数量，每轮最多生成6个炸弹
@@ -156,7 +156,7 @@ class ClassicSnakeGame:
             elif prop == 'bomb':
                 bomb_count += 1
             
-            # 所有假食物都使用随机颜色，不根据属性区分
+            # 所有食物都使用随机颜色，不根据属性区分
             # 创建一个包含多种颜色对的列表，用于随机选择
             all_colors = [
                 ((255, 105, 180), (255, 200, 220)),  # 粉色
@@ -175,8 +175,8 @@ class ClassicSnakeGame:
             self.fake_foods_age.append(0)
             self.fake_foods_properties.append(prop)
     
-    def _place_fake_food(self):
-        """放置假食物"""
+    def _place_other_food(self):
+        """放置其他食物"""
         while True:
             pos = (random.randint(0, self.grid_width-1), random.randint(0, self.grid_height-1))
             if pos not in self.snake and pos not in self.foods and pos not in self.obstacles:
@@ -195,7 +195,7 @@ class ClassicSnakeGame:
         self.obstacles = []
         
         # 生成3-5个障碍物
-        num_obstacles = random.randint(3, 5)
+        num_obstacles = random.randint(5, 8)
         for _ in range(num_obstacles):
             while True:
                 # 随机生成障碍物位置
@@ -338,8 +338,8 @@ class ClassicSnakeGame:
                 self.food_colors.append(color)
                 self.is_double_score_foods.append(random.random() < 0.2)  # 20%概率生成特殊食物
             
-            # 重新生成假食物
-            self._generate_fake_foods()
+            # 重新生成其他食物
+            self._generate_other_foods()
             # 更新上次刷新时间
             self.last_food_refresh_time = current_time_sec
         
@@ -418,7 +418,7 @@ class ClassicSnakeGame:
             # 蛇移动：在蛇头位置插入新的身体段
             self.snake.insert(0, nh)
             
-            # 检查是否吃到真食物
+            # 检查是否吃到食物
             food_eaten = False
             eaten_index = -1
             
@@ -430,7 +430,7 @@ class ClassicSnakeGame:
                     break
             
             if food_eaten:
-                # 吃到了真食物
+                # 吃到了食物
                 pos_px = (self.foods[eaten_index][0]*self.grid_size+self.grid_size//2+10, self.foods[eaten_index][1]*self.grid_size+self.grid_size//2+10)
                 emit_particle_burst(30, pos_px, [self.food_colors[eaten_index]])
                 
@@ -462,22 +462,22 @@ class ClassicSnakeGame:
                 if self.score > self.high_score:
                     self.high_score = self.score
                 
-                # 吃到真食物后，移除被吃掉的食物
+                # 吃到食物后，移除被吃掉的食物
                 self.foods.pop(eaten_index)
                 self.food_colors.pop(eaten_index)
                 self.is_double_score_foods.pop(eaten_index)
                 
-                # 生成新的真食物
+                # 生成新的食物
                 new_pos, new_color = self._place_food()
                 self.foods.append(new_pos)
                 self.food_colors.append(new_color)
                 self.is_double_score_foods.append(random.random() < 0.2)  # 20%概率生成特殊食物
             
-            # 检查是否吃到假食物或炸弹
+            # 检查是否吃到其他食物或炸弹
             else:
-                game_over, fake_food_eaten = self._check_fake_foods()
-                # 只有在没吃到假食物或炸弹的情况下，才缩短蛇身
-                if not fake_food_eaten and not game_over:
+                game_over, other_food_eaten = self._check_other_foods()
+                # 只有在没吃到其他食物或炸弹的情况下，才缩短蛇身
+                if not other_food_eaten and not game_over:
                     self.snake.pop()
             
             # 更新当前游戏的最长记录
@@ -499,17 +499,17 @@ class ClassicSnakeGame:
         for i in range(len(self.fake_foods_age)):
             self.fake_foods_age[i] += delta_time * 0.01
     
-    def _check_fake_foods(self):
-        """检查假食物和炸弹，处理各种属性效果"""
+    def _check_other_foods(self):
+        """检查其他食物和炸弹，处理各种属性效果"""
         snake_head = self.snake[0]
         to_remove = []
-        fake_food_eaten = False  
+        other_food_eaten = False  
         
         # 使用列表副本进行遍历，避免在遍历过程中修改列表导致的无限循环
-        for i, fake_food in enumerate(self.fake_foods.copy()):
-            if snake_head == fake_food:
+        for i, other_food in enumerate(self.fake_foods.copy()):
+            if snake_head == other_food:
                 prop = self.fake_foods_properties[i]
-                pos_px = (fake_food[0]*self.grid_size+self.grid_size//2+10, fake_food[1]*self.grid_size+self.grid_size//2+10)
+                pos_px = (other_food[0]*self.grid_size+self.grid_size//2+10, other_food[1]*self.grid_size+self.grid_size//2+10)
                 
                 emit_particle_burst(20, pos_px, [self.fake_foods_colors[i]])
                 
@@ -532,8 +532,8 @@ class ClassicSnakeGame:
                             print(f"播放游戏结束音效失败: {e}")
                     return True, False  # 吃到炸弹，返回True表示游戏结束，False表示没有吃到可生长的食物
                 
-                # 吃到了非炸弹的假食物，标记为需要生长
-                fake_food_eaten = True
+                # 吃到了非炸弹的食物，标记为需要生长
+                other_food_eaten = True
                 
                 if prop == 'color_change':
                     self.effects['color_change'] = True
@@ -574,27 +574,29 @@ class ClassicSnakeGame:
                 
                 to_remove.append(i)
         
-        # 先移除所有需要移除的假食物
+        # 先移除所有需要移除的其他食物
         for i in sorted(to_remove, reverse=True):
             self.fake_foods.pop(i)
             self.fake_foods_colors.pop(i)
             self.fake_foods_age.pop(i)
             self.fake_foods_properties.pop(i)
         
-        # 然后生成新的假食物，保持假食物数量稳定
+        # 然后生成新的其他食物，保持食物数量稳定
         for _ in range(len(to_remove)):
-            pos = self._place_fake_food()
+            pos = self._place_other_food()
             self.fake_foods.append(pos)
             
             properties = ['bomb', 'color_change', 'speed_up', 'speed_down', 'freeze', 'none']
-            weights = [0.05, 0.16, 0.16, 0.16, 0.16, 0.31]  
+            weights = [0.01, 0.16, 0.16, 0.16, 0.16, 0.35]  
             prop = random.choices(properties, weights=weights)[0]
             
             bomb_count = sum(1 for p in self.fake_foods_properties if p == 'bomb')
-            if prop == 'bomb' and bomb_count >= 12:
+            if prop == 'bomb' and bomb_count >= 6:
                 prop = random.choice(['color_change', 'speed_up', 'speed_down', 'freeze', 'none'])
+            elif prop == 'bomb':
+                bomb_count += 1
             
-            # 所有假食物都使用随机颜色
+            # 所有食物都使用随机颜色
             all_colors = [
                 ((255, 105, 180), (255, 200, 220)),  
                 ((135, 206, 250), (200, 230, 255)),  
@@ -613,18 +615,20 @@ class ClassicSnakeGame:
         if len(self.fake_foods) < 4:
             needed = 4 - len(self.fake_foods)
             for _ in range(needed):
-                pos = self._place_fake_food()
+                pos = self._place_other_food()
                 self.fake_foods.append(pos)
                 
                 properties = ['bomb', 'color_change', 'speed_up', 'speed_down', 'freeze', 'none']
-                weights = [0.05, 0.16, 0.16, 0.16, 0.16, 0.31]  
+                weights = [0.01, 0.16, 0.16, 0.16, 0.16, 0.35]  
                 prop = random.choices(properties, weights=weights)[0]
                 
                 bomb_count = sum(1 for p in self.fake_foods_properties if p == 'bomb')
-                if prop == 'bomb' and bomb_count >= 12:
+                if prop == 'bomb' and bomb_count >= 6:
                     prop = random.choice(['color_change', 'speed_up', 'speed_down', 'freeze', 'none'])
+                elif prop == 'bomb':
+                    bomb_count += 1
                 
-                # 所有假食物都使用随机颜色
+                # 所有食物都使用随机颜色
                 all_colors = [
                     ((255, 105, 180), (255, 200, 220)),  
                     ((135, 206, 250), (200, 230, 255)),  
@@ -640,7 +644,7 @@ class ClassicSnakeGame:
                 self.fake_foods_age.append(0)
                 self.fake_foods_properties.append(prop)
         
-        return False, fake_food_eaten  # 未吃到炸弹，返回False表示游戏未结束，fake_food_eaten表示是否吃到了可生长的食物
+        return False, other_food_eaten  # 未吃到炸弹，返回False表示游戏未结束，other_food_eaten表示是否吃到了可生长的食物
 
     def _get_segment_color(self, segment_index, total_segments):
         """
@@ -711,7 +715,7 @@ class ClassicSnakeGame:
 
         if not self.game_over:
 
-            # 绘制真食物
+            # 绘制主要食物
             for i in range(len(self.foods)):
                 food_pos = (self.foods[i][0]*self.grid_size+self.grid_size//2+10, self.foods[i][1]*self.grid_size+self.grid_size//2+10)
                 
@@ -721,14 +725,14 @@ class ClassicSnakeGame:
                     pygame.draw.circle(screen, gold_color, food_pos, self.grid_size//2, width=3)
                     pygame.draw.circle(screen, gold_color, food_pos, self.grid_size//3)
                 else:
-                    # 普通真食物使用随机颜色，不再闪烁
+                    # 普通食物使用随机颜色
                     pygame.draw.circle(screen, self.food_colors[i][0], food_pos, self.grid_size//3)
             
-            # 绘制假食物，使用随机颜色
-            for i, fake_food in enumerate(self.fake_foods):
-                fake_color = self.fake_foods_colors[i][0]
-                fake_pos = (fake_food[0]*self.grid_size+self.grid_size//2+10, fake_food[1]*self.grid_size+self.grid_size//2+10)
-                pygame.draw.circle(screen, fake_color, fake_pos, self.grid_size//3)
+            # 绘制其他食物
+            for i, other_food in enumerate(self.fake_foods):
+                other_color = self.fake_foods_colors[i][0]
+                other_pos = (other_food[0]*self.grid_size+self.grid_size//2+10, other_food[1]*self.grid_size+self.grid_size//2+10)
+                pygame.draw.circle(screen, other_color, other_pos, self.grid_size//3)
             
             total_segments = len(self.snake)
 
