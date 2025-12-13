@@ -688,7 +688,13 @@ class ClassicSnakeGame:
             pygame.draw.line(screen, grid_color, (10, y), (self.width-10, y)) 
 
 
-        border_color = (40, 40, 40) 
+        # 炫彩动态边框
+        current_time = pygame.time.get_ticks()
+        # 使用正弦函数生成彩虹色，确保RGB值在0-255范围内
+        r = int((1 + math.sin(current_time * 0.001)) * 127.5)
+        g = int((1 + math.sin(current_time * 0.001 + 2 * math.pi / 3)) * 127.5)
+        b = int((1 + math.sin(current_time * 0.001 + 4 * math.pi / 3)) * 127.5)
+        border_color = (r, g, b)
         pygame.draw.rect(screen, border_color, (0, 0, self.width, self.height), 10)
 
 
